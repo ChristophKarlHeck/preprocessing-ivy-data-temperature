@@ -1,173 +1,218 @@
+"""
+Author: Christoph Karl Heck
+Date: 2025-01-20
+Description: This script preprocesses CSV files for phyto and temperature node data. 
+             It includes data filtering, resampling, smoothing, scaling, and visualization.
+             The output includes preprocessed CSV files and visual plots.
+"""
+
+from datetime import datetime
+from rich.console import Console
 import os
 import pandas as pd
 import glob
-
-# Define constants
-DATABITS = 8388608  # 23-bit ADC resolution
-VREF = 2.5          # Reference voltage in volts
-GAIN = 4.0 
-WINDOW_SIZE = 5     # Rolling window size for smoothing
-RESAMPLE_RATE = '1s'  # Resampling rate
-DATA_DIR = "/home/chris/experiment_data/19.12.24-08.01.25" # containing P3, P5 and P6 (temperature data)
-CUTOFF_DATE = "2024-12-20"
-MIN_VALUE = -200 #mv for max min scaling
-MAX_VALUE = 200 #mv
-
-# Enable interactive mode for plotting (if needed)
+import argparse
 import matplotlib.pyplot as plt
-plt.ion()
+from typing import Optional
 
-# Directories
-preprocessed_dir = os.path.join(DATA_DIR, "preprocessed")
-os.makedirs(preprocessed_dir, exist_ok=True)
+# Constants
+CONFIG = {
+    "DATABITS": 8388608,
+    "VREF": 2.5,
+    "GAIN": 4.0,
+    "WINDOW_SIZE": 5,
+    "RESAMPLE_RATE": "1s",
+    "MIN_VALUE": -200,
+    "MAX_VALUE": 200,
+}
 
-# Process P3 ivy data
-# p3_files = glob.glob(os.path.join(DATA_DIR, "P3_*.csv"))
-# p3_files_sorted = sorted(p3_files, key=lambda x: os.path.basename(x).split('_')[1])
-# df_p3 = pd.concat([pd.read_csv(file) for file in p3_files_sorted], ignore_index=True)
-
-# Process P5 ivy data
-# p5_files = glob.glob(os.path.join(preprocessed_dir, "p5_*.csv"))
-# p5_files_sorted = sorted(p5_files, key=lambda x: os.path.basename(x).split('_')[1])
-# df_p5 = pd.concat([pd.read_csv(file) for file in p5_files_sorted], ignore_index=True)
-
-# Process P6 (temperature) data
-temp_files = glob.glob(os.path.join(DATA_DIR, "P6_*.csv"))
-temp_files_sorted = sorted(temp_files, key=lambda x: os.path.basename(x).split('_')[1])
-df_temp = pd.concat([pd.read_csv(file) for file in temp_files_sorted], ignore_index=True)
-df_temp = df_temp.rename(columns={'timestamp': 'datetime'}) # rename column timestamp
-
-# Convert datetime columns to pandas datetime format
-# df_p3['datetime'] = pd.to_datetime(df_p3['datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
-#df_p5['datetime'] = pd.to_datetime(df_p5['datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
-df_temp['datetime'] = pd.to_datetime(df_temp['datetime'], format='%Y-%m-%d_%H:%M:%S:%f', errors='coerce')
+# Initialize the console
+console = Console()
 
 
-# Drop rows with invalid datetime
-# df_p3 = df_p3.dropna(subset=['datetime']) 
-#df_p5 = df_p5.dropna(subset=['datetime']) 
-df_temp = df_temp.dropna(subset=['datetime'])
+def validate_date(date_str: str) -> str:
+    """
+    Validate and format the cutoff date.
+    Args:
+        date_str (str): Input date string.
+    Returns:
+        str: Formatted date string in YYYY-MM-DD format.
+    """
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Invalid cutoff_date format. Use 'YYYY-MM-DD'.")
 
 
-
-# Set datetime as index
-# df_p3.set_index('datetime', inplace=True)
-#df_p5.set_index('datetime', inplace=True)
-df_temp.set_index('datetime', inplace=True)
-
-
-# Cut off data before cutoff_date
-# df_p3 = df_p3[df_p3.index >= CUTOFF_DATE]
-#df_p5 = df_p5[df_p5.index >= CUTOFF_DATE]
-df_temp = df_temp[df_temp.index >= CUTOFF_DATE]
-
-
-# Resample to 1 Hz and interpolate missing values
-# df_p3_resampled = df_p3.resample(RESAMPLE_RATE).mean().interpolate()
-#df_p5_resampled = df_p5.resample(RESAMPLE_RATE).mean().interpolate()
-df_temp_resampled = df_temp.resample(RESAMPLE_RATE).mean().interpolate()
-
-df_p5_resampled = pd.read_csv(os.path.join(preprocessed_dir, "p5_preprocessed.csv"), parse_dates=['datetime'], index_col='datetime')
-
-print(df_p5_resampled.head())
-
-# Convert to milli Volt
-# df_p3_resampled['CH1_mv'] = ((df_p3_resampled['CH1'] / DATABITS - 1) * VREF / GAIN) * 1000  # Convert to millivolts
-# df_p3_resampled['CH2_mv'] = ((df_p3_resampled['CH2'] / DATABITS - 1) * VREF / GAIN) * 1000  # Convert to millivolts
-
-df_p5_resampled['CH1_mv'] = ((df_p5_resampled['CH1'] / DATABITS - 1) * VREF / GAIN) * 1000  # Convert to millivolts
-df_p5_resampled['CH2_mv'] = ((df_p5_resampled['CH2'] / DATABITS - 1) * VREF / GAIN) * 1000  # Convert to millivolts
-
-# Apply a simple moving average filter to CH1 and CH2
-# Adjust the Window Size: Test different WINDOW_SIZE values (e.g., 3, 5, 10) to find a balance between noise reduction and preserving trends.
-# df_p3_resampled["CH1_smooth"] = df_p3_resampled["CH1_mv"].rolling(window=WINDOW_SIZE).mean().dropna()
-# df_p3_resampled["CH2_smooth"] = df_p3_resampled["CH2_mv"].rolling(window=WINDOW_SIZE).mean().dropna()
-
-df_p5_resampled["CH1_smooth"] = df_p5_resampled["CH1_mv"].rolling(window=WINDOW_SIZE).mean()
-df_p5_resampled["CH2_smooth"] = df_p5_resampled["CH2_mv"].rolling(window=WINDOW_SIZE).mean()
-
-# Function to apply min-max scaling
-def min_max_scale(df, column):
-    min_val = df[column].min()
-    max_val = df[column].max()
-    df[f"{column}_scaled"] = (df[column] - MIN_VALUE) / (MAX_VALUE - MIN_VALUE)
-
-# Scale the data
-# min_max_scale(df_p3_resampled, "CH1_smooth")
-# min_max_scale(df_p3_resampled, "CH2_smooth")
-min_max_scale(df_p5_resampled, "CH1_smooth")
-min_max_scale(df_p5_resampled, "CH2_smooth")
-
-# Write to CSV
-# df_p3_resampled.to_csv(os.path.join(preprocessed_dir, "p3_preprocessed.csv"))
-df_p5_resampled.to_csv(os.path.join(preprocessed_dir, "p5_preprocessed_2.csv"))
-df_temp_resampled.to_csv(os.path.join(preprocessed_dir, "temp_preprocessed.csv"))
-
-print("Preprocessing complete. Files saved in:", preprocessed_dir)
+def discover_files(data_dir: str, prefix: str) -> list[str]:
+    """
+    Discover CSV files matching the given prefix in the specified directory.
+    Args:
+        data_dir (str): Directory to search.
+        prefix (str): File prefix to match.
+    Returns:
+        list[str]: List of matching file paths.
+    """
+    console.print(f"[bold cyan]Discovering files with prefix '{prefix}' in '{data_dir}'[/bold cyan]")
+    files = glob.glob(os.path.join(data_dir, f"{prefix}_*.csv"))
+    console.print(f"Found [bold yellow]{len(files)}[/bold yellow] matching files.")
+    return files
 
 
-# Create a figure with subplots and shared x-axis
-fig, axs = plt.subplots(4, 1, figsize=(14, 14), sharex=True)
-
-#P3 CH1
-# axs[0].plot(df_p3_resampled.index, df_p3_resampled["CH1_mv"], label="Resampled CH1")
-# axs[0].plot(df_p3_resampled.index, df_p3_resampled["CH1_smooth"], label="Smoothed CH1", linestyle="--")
-# axs[0].set_title("P3 CH1 Resampled, Smoothed, and Scaled")
-# axs[0].set_ylabel("Value")
-# axs[0].legend()
-# axs[0].grid()
-
-#P3 CH2
-# axs[1].plot(df_p3_resampled.index, df_p3_resampled["CH2_mv"], label="Resampled CH2")
-# axs[1].plot(df_p3_resampled.index, df_p3_resampled["CH2_smooth"], label="Smoothed CH2", linestyle="--")
-# axs[1].set_title("P3 CH2 Resampled, Smoothed, and Scaled")
-# axs[1].set_ylabel("Value")
-# axs[1].legend()
-# axs[1].grid()
-
-# #P5 CH1
-axs[0].plot(df_p5_resampled.index, df_p5_resampled["CH1_mv"], label="Resampled CH1")
-axs[0].plot(df_p5_resampled.index, df_p5_resampled["CH1_smooth"], label="Smoothed CH1", linestyle="--")
-axs[0].set_title("P5 CH1: Resampled and Smoothed Data")
-axs[0].set_ylabel("mV")
-axs[0].legend()
-axs[0].grid()
-
-# # P5 CH2
-axs[1].plot(df_p5_resampled.index, df_p5_resampled["CH2_mv"], label="Resampled CH2")
-axs[1].plot(df_p5_resampled.index, df_p5_resampled["CH2_smooth"], label="Smoothed CH2", linestyle="--")
-axs[1].set_title("P5 CH1: Resampled and Smoothed Data")
-axs[1].set_ylabel("mV")
-axs[1].legend()
-axs[1].grid()
-
-axs[2].plot(df_p5_resampled.index, df_p5_resampled["CH1_smooth_scaled"], label="Scaled CH1", linestyle=":")
-axs[2].plot(df_p5_resampled.index, df_p5_resampled["CH2_smooth_scaled"], label="Scaled CH2", linestyle="--")
-# axs[2].plot(df_p3_resampled.index, df_p3_resampled["CH1_smooth_scaled"], label="Scaled CH1", linestyle=":")
-# axs[2].plot(df_p3_resampled.index, df_p3_resampled["CH2_smooth_scaled"], label="Scaled CH2", linestyle="--")
-axs[2].set_title("P5 CH1,CH2: Resampled, Smoothed, and Scaled Data")
-axs[2].set_ylabel("")
-axs[2].legend()
-axs[2].grid()
-
-# Temperature Data
-df_temp_resampled['avg_leaf_temp'] = (df_temp_resampled['T1_leaf'] + df_temp_resampled['T2_leaf']) / 2
-df_temp_resampled['avg_air_temp'] = (df_temp_resampled['T1_air'] + df_temp_resampled['T2_air']) / 2
-axs[3].plot(df_temp_resampled.index, df_temp_resampled['avg_leaf_temp'], label='Average Leaf Temperature', alpha=0.7)
-axs[3].plot(df_temp_resampled.index, df_temp_resampled['avg_air_temp'], label='Average Air Temperature', alpha=0.7)
-axs[3].set_title("Temperature Data (1 Hz)")
-axs[3].set_xlabel("Datetime")
-axs[3].set_ylabel("°C")
-axs[3].legend()
-axs[3].grid()
-
-# Adjust layout
-plt.tight_layout()
-
-plot_path = os.path.join(preprocessed_dir, "p5_preprocessed_data.png")
-plt.savefig(plot_path, dpi=300)
-
-plt.show(block=True)
+def load_and_combine_csv(files: list[str]) -> pd.DataFrame:
+    """
+    Load and combine multiple CSV files into a single DataFrame.
+    Args:
+        files (list[str]): List of file paths.
+    Returns:
+        pd.DataFrame: Combined DataFrame.
+    """
+    console.print("[bold green]Loading and combining CSV files into a single DataFrame...[/bold green]")
+    return pd.concat([pd.read_csv(file) for file in files], ignore_index=True)
 
 
-plt.close(fig)
+def preprocess_data(df: pd.DataFrame, cutoff_date: str) -> pd.DataFrame:
+    """
+    Preprocess the data: filter by date, resample, and smooth.
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        cutoff_date (str): Date to filter rows before.
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame.
+    """
+    console.print("[bold yellow]Preprocessing data: filtering and resampling...[/bold yellow]")
+    df = df.dropna(subset=["datetime"])
+    df.set_index("datetime", inplace=True)
+    df = df[df.index >= cutoff_date]
+    df_resampled = df.resample(CONFIG["RESAMPLE_RATE"]).mean().interpolate()
+    return df_resampled
+
+
+def scale_column(df: pd.DataFrame, column: str) -> None:
+    """
+    Scale a column using min-max scaling.
+    Args:
+        df (pd.DataFrame): DataFrame containing the column.
+        column (str): Column to scale.
+    """
+    console.print(f"[bold magenta]Scaling column '{column}' using Min-Max Scaling...[/bold magenta]")
+    df[f"{column}_scaled"] = (df[column] - CONFIG["MIN_VALUE"]) / (
+        CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
+    )
+
+
+def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_dir: str) -> None:
+    """
+    Plot and save the processed data.
+    Args:
+        df_phyto (pd.DataFrame): Phyto node data.
+        df_temp (pd.DataFrame): Temperature node data.
+        prefix (str): Prefix for file naming.
+        save_dir (str): Directory to save the plots.
+    """
+    fig, axs = plt.subplots(4, 1, figsize=(14, 14), sharex=True)
+
+    # Phyto node CH1
+    axs[0].plot(df_phyto.index, df_phyto["CH1_milli_volt"], label="CH1 Resampled")
+    axs[0].plot(df_phyto.index, df_phyto["CH1_smoothed"], label="CH1 Smoothed", linestyle="--")
+    axs[0].set_title(f"{prefix} CH1: Resampled and Smoothed Data")
+    axs[0].legend()
+    axs[0].grid()
+
+    # Phyto node CH2
+    axs[1].plot(df_phyto.index, df_phyto["CH2_milli_volt"], label="CH2 Resampled")
+    axs[1].plot(df_phyto.index, df_phyto["CH2_smoothed"], label="CH2 Smoothed", linestyle="--")
+    axs[1].set_title(f"{prefix} CH2: Resampled and Smoothed Data")
+    axs[1].legend()
+    axs[1].grid()
+
+    # Scaled Data
+    axs[2].plot(df_phyto.index, df_phyto["CH1_smoothed_scaled"], label="CH1 Scaled", linestyle=":")
+    axs[2].plot(df_phyto.index, df_phyto["CH2_smoothed_scaled"], label="CH2 Scaled", linestyle="--")
+    axs[2].set_title(f"{prefix} CH1, CH2: Scaled Data")
+    axs[2].legend()
+    axs[2].grid()
+
+    # Temperature
+    axs[3].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Avg Leaf Temp", alpha=0.7)
+    axs[3].plot(df_temp.index, df_temp["avg_air_temp"], label="Avg Air Temp", alpha=0.7)
+    axs[3].set_title("Temperature Data")
+    axs[3].legend()
+    axs[3].grid()
+
+    plt.tight_layout()
+    plot_path = os.path.join(save_dir, f"{prefix}_plot.png")
+    plt.savefig(plot_path, dpi=300)
+    plt.show()
+
+def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
+    """
+    Save the global configuration dictionary to a .txt file in the specified directory
+    with a filename based on the given prefix.
+    Args:
+        configuration (dict): The configuration dictionary to save.
+        directory (str): The directory where the file will be saved.
+        prefix (str): The prefix for the filename.
+    """
+    filename = os.path.join(directory, f"{prefix}_config_used_for_preprocessing.txt")
+
+    try:
+        # Write the configuration to the file
+        with open(filename, "w") as file:
+            for key, value in configuration.items():
+                file.write(f"{key} = {value}\n")
+        
+        console.print(f"[bold green]Configuration successfully saved to '{filename}'[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Failed to save configuration to '{filename}': {e}[/bold red]")
+
+def main():
+    # Argument parser
+    parser = argparse.ArgumentParser(description="Preprocess CSV files.")
+    parser.add_argument("--prefix", required=True, help="Phyto node prefix (e.g., 'P5').")
+    parser.add_argument("--data_dir", required=True, help="Directory with raw files.")
+    parser.add_argument("--cutoff_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
+    args = parser.parse_args()
+
+    # Normalize and validate inputs
+    prefix = args.prefix.upper()
+    data_dir = args.data_dir.lower()
+    cutoff_date = validate_date(args.cutoff_date)
+
+    # Print Input Parameters
+    console.print(f"[bold cyan]Prefix:[/bold cyan] {prefix}")
+    console.print(f"[bold green]Data Directory:[/bold green] {data_dir}")
+    console.print(f"[bold yellow]Cutoff Date:[/bold yellow] {cutoff_date}")
+
+    # Process Phyto Node 
+    phyto_files = discover_files(data_dir, prefix)
+    df_phyto = load_and_combine_csv(phyto_files)
+    df_phyto['datetime'] = pd.to_datetime(df_phyto['datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
+    df_phyto = preprocess_data(df_phyto, cutoff_date)
+    df_phyto["CH1_milli_volt"] = ((df_phyto["CH1"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
+    df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
+    df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
+    df_phyto["CH2_smoothed"] = df_phyto["CH2_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
+    scale_column(df_phyto, "CH1_smoothed")
+    scale_column(df_phyto, "CH2_smoothed")
+
+    # Process Temperature Node
+    temp_files = discover_files(data_dir, "P6")
+    df_temp = load_and_combine_csv(temp_files)
+    df_temp = df_temp.rename(columns={'timestamp': 'datetime'})
+    df_temp['datetime'] = pd.to_datetime(df_temp['datetime'], format='%Y-%m-%d_%H:%M:%S:%f', errors='coerce')
+    df_temp = preprocess_data(df_temp, cutoff_date)
+    df_temp["avg_leaf_temp"] = (df_temp["T1_leaf"] + df_temp["T2_leaf"]) / 2
+    df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
+
+    # Save and Plot
+    preprocessed_dir = os.path.join(data_dir, "preprocessed")
+    os.makedirs(preprocessed_dir, exist_ok=True)
+    df_phyto.to_csv(os.path.join(preprocessed_dir, f"{prefix}_preprocessed.csv"))
+    df_temp.to_csv(os.path.join(preprocessed_dir, "temperature_preprocessed.csv"))
+    save_config_to_txt(CONFIG, preprocessed_dir, prefix)
+    plot_data(df_phyto, df_temp, prefix, preprocessed_dir)
+
+
+if __name__ == "__main__":
+    main()

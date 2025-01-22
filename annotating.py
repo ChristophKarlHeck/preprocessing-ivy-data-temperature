@@ -30,29 +30,62 @@ block_stats.loc[(block_stats['mean_diff'].abs() < 0.17) & (block_stats['mean'] >
 block_stats = block_stats.reset_index()
 data['phase_block'] = data['block'].map(block_stats.set_index('block')['phase_block'])
 
-# ===== Window Sliding Approach =====
+# Plot
+block_timestamps = data.groupby('block')['datetime'].first().reset_index(drop=True)
+plt.figure(figsize=(15, 6))
+plt.plot(block_timestamps, block_stats['mean_diff'], color='orange', label="Mean Difference", linewidth=1.5)
+plt.title("Mean Difference Between Blocks")
+plt.xlabel("Datetime")
+plt.ylabel("Mean Difference (°C)")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+# ===== Window Sliding Approach ===== Focusing on decrease
 window_size = 300
 data['rolling_mean'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).mean()
-data['rolling_std'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).std()
-data['trend_window'] = data['rolling_mean'].diff().fillna(0)
+data['previous_mean'] = data['rolling_mean'].shift()
+data['trend_window'] = data['rolling_mean'] - data['previous_mean']
+
 data['phase_window'] = 'NotYet'
-data.loc[data['trend_window'].abs() < 0.0013, 'phase_window'] = "Nothing"
-data.loc[data['trend_window'] >= 0.0013, 'phase_window'] = 'Increasing'
-data.loc[data['trend_window'] <= -0.013, 'phase_window'] = 'Decreasing'
-data.loc[(data['trend_window'].abs() < 0.0013) & (data['rolling_mean'] > 24), 'phase_window'] = 'Holding'
+data.loc[data['trend_window'].abs() < 0.0008, 'phase_window'] = "Nothing"
+data.loc[data['trend_window'] >= 0.0008, 'phase_window'] = 'Increasing'
+data.loc[data['trend_window'] <= -0.0008, 'phase_window'] = 'Decreasing'
+data.loc[(data['trend_window'].abs() < 0.0008) & (data['rolling_mean'] > 24), 'phase_window'] = 'Holding'
+
+# Plot
+plt.figure(figsize=(15, 6))
+plt.plot(data['datetime'], data['trend_window'], color='orange', label="Trend Window", linewidth=1.5)
+plt.axhline(0, color='black', linestyle='--', linewidth=0.8)  # Reference line for zero trend
+plt.title("Trend Window (Window Sliding Approach)")
+plt.xlabel("Datetime")
+plt.ylabel("Trend (°C per Window)")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
 
 # ===== Derivative-Based Approach =====
-data['rolling_diff'] = data['avg_leaf_temp'].diff().rolling(window=300, min_periods=1).sum().fillna(0)
+data['time_diff'] = data['datetime'].diff().dt.total_seconds()  # Time difference in seconds
+data['derivative'] = data['avg_leaf_temp'].diff() / data['time_diff']
 data['phase_derivative'] = 'NotYet'
-data.loc[data['rolling_diff'] > 0.4, 'phase_derivative'] = 'Increasing'
-data.loc[data['rolling_diff'] < -0.4, 'phase_derivative'] = 'Decreasing'
-data.loc[data['rolling_diff'].abs() <= 0.4, 'phase_derivative'] = 'Holding'
+data.loc[data['derivative'] > 0.05, 'phase_derivative'] = 'Increasing'
+data.loc[data['derivative'] < -0.05, 'phase_derivative'] = 'Decreasing'
+data.loc[data['derivative'].abs() <= 0.05, 'phase_derivative'] = 'Holding'
 
-# Check for NaN values in the phase-related columns
-nan_rows = data[data[['phase_block', 'phase_window', 'phase_derivative']].isna().any(axis=1)]
-if not nan_rows.empty:
-    print("Warning: Found NaN values in the phase columns!")
-    print(nan_rows)
+# Plot
+plt.figure(figsize=(15, 6))
+plt.plot(data['datetime'], data['derivative'], color='orange', label="Trend Window", linewidth=1.5)
+plt.axhline(0, color='black', linestyle='--', linewidth=0.8)  # Reference line for zero trend
+plt.title("Trend Window (Derivative-Based Approach)")
+plt.xlabel("Datetime")
+plt.ylabel("Trend (°C per Window)")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
 
 # ===== Combined Phases =====
 # Priority: Holding > Increasing > Decreasing > Nothing
@@ -63,7 +96,7 @@ data['combined_phase'] = data[['phase_block', 'phase_window', 'phase_derivative'
 
 # ===== Visualization =====
 # Define colors for phases
-phase_colors = {'Nothing': 'gray', 'Increasing': 'red', 'Decreasing': 'blue', 'Holding': 'green'}
+phase_colors = {'Nothing': 'gray', 'Increasing': 'red', 'Decreasing': 'blue', 'Holding': 'green', 'NotYet': 'yellow'}
 
 # Create subplots for each method
 fig, axes = plt.subplots(4, 1, figsize=(15, 24), sharex=True)

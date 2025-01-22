@@ -1,16 +1,16 @@
 import pandas as pd
 import os
 
-DATA_DIR = "/home/chris/experiment_data/19.12.24-08.01.25"
+DATA_DIR = "/home/chris/experiment_data/raw_19.12.24-08.01.25"
 
 # Define the file path
-input_file = os.path.join(DATA_DIR, "P3_2024-12-19_13:56:11:162202.csv")
+input_file = os.path.join(DATA_DIR, "P5_2024-12-19_13:58:11:484588.csv")
 
 # Define date ranges and output file names
 ranges = {
-    "P3_2024-12-20_to_2024-12-26.csv": ("2024-12-20", "2024-12-26"),
-    "P3_2024-12-27_to_2025-01-03.csv": ("2024-12-27", "2025-01-03"),
-    "P3_2025-01-04_to_2025-01-08.csv": ("2025-01-04", "2025-01-08")
+    "P5_2024-12-20_to_2024-12-26.csv": ("2024-12-20", "2024-12-27"),
+    "P5_2024-12-27_to_2025-01-03.csv": ("2024-12-27", "2025-01-04"),
+    "P5_2025-01-04_to_2025-01-08.csv": ("2025-01-04", "2025-01-08")
 }
 
 # Define output directory

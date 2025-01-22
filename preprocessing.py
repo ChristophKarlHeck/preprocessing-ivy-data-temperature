@@ -32,7 +32,7 @@ console = Console()
 
 def validate_date(date_str: str) -> str:
     """
-    Validate and format the cutoff date.
+    Validate and format the date.
     Args:
         date_str (str): Input date string.
     Returns:
@@ -71,19 +71,20 @@ def load_and_combine_csv(files: list[str]) -> pd.DataFrame:
     return pd.concat([pd.read_csv(file) for file in files], ignore_index=True)
 
 
-def preprocess_data(df: pd.DataFrame, cutoff_date: str) -> pd.DataFrame:
+def preprocess_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.DataFrame:
     """
     Preprocess the data: filter by date, resample, and smooth.
     Args:
         df (pd.DataFrame): Input DataFrame.
-        cutoff_date (str): Date to filter rows before.
+        from_date (str): Date to filter rows before.
     Returns:
         pd.DataFrame: Preprocessed DataFrame.
     """
     console.print("[bold yellow]Preprocessing data: filtering and resampling...[/bold yellow]")
     df = df.dropna(subset=["datetime"])
     df.set_index("datetime", inplace=True)
-    df = df[df.index >= cutoff_date]
+    df = df[df.index >= from_date]
+    df = df[df.index < until_date]
     df_resampled = df.resample(CONFIG["RESAMPLE_RATE"]).mean().interpolate()
     return df_resampled
 
@@ -171,24 +172,27 @@ def main():
     parser = argparse.ArgumentParser(description="Preprocess CSV files.")
     parser.add_argument("--prefix", required=True, help="Phyto node prefix (e.g., 'P5').")
     parser.add_argument("--data_dir", required=True, help="Directory with raw files.")
-    parser.add_argument("--cutoff_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
+    parser.add_argument("--from_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
+    parser.add_argument("--until_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data after that date.")
     args = parser.parse_args()
 
     # Normalize and validate inputs
     prefix = args.prefix.upper()
     data_dir = args.data_dir.lower()
-    cutoff_date = validate_date(args.cutoff_date)
+    from_date = validate_date(args.from_date)
+    until_date = validate_date(args.until_date)
 
     # Print Input Parameters
     console.print(f"[bold cyan]Prefix:[/bold cyan] {prefix}")
     console.print(f"[bold green]Data Directory:[/bold green] {data_dir}")
-    console.print(f"[bold yellow]Cutoff Date:[/bold yellow] {cutoff_date}")
+    console.print(f"[bold yellow]From:[/bold yellow] {from_date}")
+    console.print(f"[bold yellow]Until:[/bold yellow] {from_date}")
 
     # Process Phyto Node 
     phyto_files = discover_files(data_dir, prefix)
     df_phyto = load_and_combine_csv(phyto_files)
     df_phyto['datetime'] = pd.to_datetime(df_phyto['datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
-    df_phyto = preprocess_data(df_phyto, cutoff_date)
+    df_phyto = preprocess_data(df_phyto, from_date, until_date)
     df_phyto["CH1_milli_volt"] = ((df_phyto["CH1"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
     df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
     df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
@@ -201,7 +205,7 @@ def main():
     df_temp = load_and_combine_csv(temp_files)
     df_temp = df_temp.rename(columns={'timestamp': 'datetime'})
     df_temp['datetime'] = pd.to_datetime(df_temp['datetime'], format='%Y-%m-%d_%H:%M:%S:%f', errors='coerce')
-    df_temp = preprocess_data(df_temp, cutoff_date)
+    df_temp = preprocess_data(df_temp, from_date, until_date)
     df_temp["avg_leaf_temp"] = (df_temp["T1_leaf"] + df_temp["T2_leaf"]) / 2
     df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
 

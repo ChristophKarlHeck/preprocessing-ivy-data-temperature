@@ -2,7 +2,7 @@
 
 ## Do preprocessing for each week and phyto-node
 ```bash
-python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/1_2024_12_13-2024_12_19 --cutoff_date 2024-12-14
+python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/5_09.01.25-15.01.25 --from_date 2025-01-10 --until_date 2025-01-16
 ```
 
 ## Utils

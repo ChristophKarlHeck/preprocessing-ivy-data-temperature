@@ -12,26 +12,78 @@ data['datetime'] = pd.to_datetime(data['datetime'])
 single_day = '2025-01-13'
 data = data[data['datetime'].dt.date == pd.to_datetime(single_day).date()]
 
-# Set a 5-minute rolling window
-data['rolling_diff'] = data['avg_leaf_temp'].diff().rolling(window=300, min_periods=1).sum()
+# Set a sliding window size
+window_size = 300  # Number of points in the sliding window (adjust as needed)
 
-# Print rolling_diff statistics for debugging
-print("Rolling Difference Statistics:")
-print(data['rolling_diff'].describe())
+# Calculate the rolling mean for trend detection
+data['rolling_mean'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).mean()
+data['rolling_std'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).std()
+data['rolling_min'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).min()
+data['rolling_max'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).max()
 
-# Define thresholds for classification
-increase_threshold = 0.4 #0.5  # Adjust this value
-decrease_threshold = -0.5 #-0.5  # Adjust this value
-hold_threshold = 0.1 # 0.2  # Adjust this value
+# Create subplots for each rolling statistic
+fig, axes = plt.subplots(4, 1, figsize=(15, 18), sharex=True)
 
-# Classify phases
-data['phase'] = 'Nothing'
-data.loc[data['rolling_diff'] > increase_threshold, 'phase'] = 'Increasing'
-data.loc[data['rolling_diff'] < decrease_threshold, 'phase'] = 'Decreasing'
-data.loc[data['rolling_diff'].abs() <= hold_threshold, 'phase'] = 'Holding'
+# Plot rolling mean
+axes[0].plot(data['datetime'], data['rolling_mean'], color='orange', label="Rolling Mean", linewidth=1.5)
+axes[0].set_title("Rolling Mean")
+axes[0].set_ylabel("Temperature (°C)")
+axes[0].legend()
+axes[0].grid()
+
+# Plot rolling standard deviation
+axes[1].plot(data['datetime'], data['rolling_std'], color='blue', label="Rolling Std Dev", linewidth=1.5)
+axes[1].set_title("Rolling Standard Deviation")
+axes[1].set_ylabel("Std Dev (°C)")
+axes[1].legend()
+axes[1].grid()
+
+# Plot rolling minimum
+axes[2].plot(data['datetime'], data['rolling_min'], color='green', label="Rolling Min", linewidth=1.5)
+axes[2].set_title("Rolling Minimum")
+axes[2].set_ylabel("Temperature (°C)")
+axes[2].legend()
+axes[2].grid()
+
+# Plot rolling maximum
+axes[3].plot(data['datetime'], data['rolling_max'], color='red', label="Rolling Max", linewidth=1.5)
+axes[3].set_title("Rolling Maximum")
+axes[3].set_xlabel("Datetime")
+axes[3].set_ylabel("Temperature (°C)")
+axes[3].legend()
+axes[3].grid()
+
+# Adjust layout and show the plot
+plt.tight_layout()
+plt.show()
+
+
+# Shift the rolling mean to compare with the previous window
+data['previous_mean'] = data['rolling_mean'].shift()
+
+# Calculate the actual trend (difference between current and previous rolling means)
+data['trend'] = data['rolling_mean'] - data['previous_mean']
+
+
+plt.figure(figsize=(15, 6))
+plt.plot(data['datetime'], data['trend'], color='orange', label="Rolling Mean (Window=300)", linewidth=1.5)
+plt.title("Rolling Mean of Average Air Temperature")
+plt.xlabel("Datetime")
+plt.ylabel("Rolling Mean (°C)")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+# Classify phases based on trend
+data['phase'] = 'NotYet'
+data.loc[data['trend'].abs() < 0.0013, 'phase'] = "Nothing"
+data.loc[data['trend'] >= 0.0013, 'phase'] = 'Increasing'
+data.loc[data['trend'] <= -0.013, 'phase'] = 'Decreasing'
+data.loc[(data['trend'].abs() < 0.0013) & (data['rolling_mean'] > 24), 'phase'] = 'Holding'
 
 # Define colors for the phases
-phase_colors = {'Nothing': 'gray', 'Increasing': 'red', 'Decreasing': 'blue', 'Holding': 'green'}
+phase_colors = {'Nothing': 'gray', 'Increasing': 'red', 'Decreasing': 'blue', 'Holding': 'green', "NotYet":'yellow'}
 
 # Create subplots
 fig, axes = plt.subplots(2, 1, figsize=(15, 12), sharex=True)
@@ -47,7 +99,7 @@ axes[0].grid()
 for phase, color in phase_colors.items():
     phase_data = data[data['phase'] == phase]
     axes[1].scatter(phase_data['datetime'], phase_data['avg_leaf_temp'], color=color, label=phase, s=10)
-axes[1].set_title("Classified Phases (5-Min Window Based)")
+axes[1].set_title("Classified Phases Based on Trend")
 axes[1].set_xlabel("Datetime")
 axes[1].set_ylabel("Temperature (°C)")
 axes[1].legend()

@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
 from scipy.signal import find_peaks
+from scipy.signal import savgol_filter
 import numpy as np
 from datetime import timedelta
 
@@ -17,8 +18,9 @@ single_day = '2025-01-13'
 data = data[data['datetime'].dt.date == pd.to_datetime(single_day).date()]
 
 # ===== Window Sliding Approach ===== Focusing on decrease
-window_size = 1200
-data['rolling_mean'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).mean()
+window_length = 1201  # Must be odd and smaller than the dataset size
+polyorder = 4        # Polynomial order for fitting
+data['rolling_mean'] = savgol_filter(data['avg_air_temp'], window_length, polyorder)
 
 # Use `find_peaks` with additional parameters to refine peak detection
 peaks_indices, properties = find_peaks(
@@ -60,7 +62,7 @@ for peak_index in highest_peaks_indices:
     holding_indices = data.index[
         (data['datetime'] >= start_time) &
         (data['datetime'] <= end_time) &
-        (data['rolling_mean'] >= peak_value - 1)
+        (data['rolling_mean'] >= peak_value - 0.5)
     ]
     data.loc[holding_indices, 'heavy_slope'] = 'Holding'
 
@@ -72,7 +74,7 @@ data['block'] = (data['heavy_slope'] != data['heavy_slope'].shift()).cumsum()
 block_sizes = data.groupby('block').size()
 
 # Normalize by merging small blocks into surrounding larger blocks
-min_block_size = 300  # Define a minimum block size for normalization (5 min)
+min_block_size = 600  # Define a minimum block size for normalization (5 min)
 for block_id, size in block_sizes.items():
     if size < min_block_size:
         # Find indices of the current block

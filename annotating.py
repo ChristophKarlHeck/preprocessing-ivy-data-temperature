@@ -31,12 +31,9 @@ peaks_indices, properties = find_peaks(
 # Extract the 5 highest peaks from the identified peaks
 highest_peaks_indices = data.iloc[peaks_indices]['rolling_mean'].nlargest(5).index
 
-print(highest_peaks_indices)
-
 # Extract data for the 5 highest peaks
 highest_peaks_data = data.loc[highest_peaks_indices, ['datetime', 'avg_air_temp', 'rolling_mean']]
 
-print(highest_peaks_data)
 
 # Recalculate the gradient and mark heavy slopes to ensure the column exists
 data['gradient'] = np.gradient(data['rolling_mean'])

@@ -67,35 +67,45 @@ for peak_index in highest_peaks_indices:
     ]
     data.loc[holding_indices, 'heavy_slope'] = 'Holding'
 
-# Plot the rolling mean with both peaks and heavy slope regions highlighted
+# ===== Normalization =====
+# Assign a unique ID to consecutive blocks of the same slope
+data['block'] = (data['heavy_slope'] != data['heavy_slope'].shift()).cumsum()
+
+# Calculate the size of each block
+block_sizes = data.groupby('block').size()
+
+# Normalize by merging small blocks into surrounding larger blocks
+min_block_size = 300  # Define a minimum block size for normalization (5 min)
+for block_id, size in block_sizes.items():
+    if size < min_block_size:
+        # Find indices of the current block
+        indices = data[data['block'] == block_id].index
+        # Assign the label of the nearest neighboring block
+        if indices[0] > 0:
+            data.loc[indices, 'heavy_slope'] = data.loc[indices[0] - 1, 'heavy_slope']
+        elif indices[-1] < len(data) - 1:
+            data.loc[indices, 'heavy_slope'] = data.loc[indices[-1] + 1, 'heavy_slope']
+
+# Drop the temporary block column
+data.drop(columns='block', inplace=True)
+
+# Plot the rolling mean with normalized heavy slope regions highlighted
 plt.figure(figsize=(15, 6))
 plt.plot(data['datetime'], data['rolling_mean'], color='orange', label="Rolling Mean (Window Size = 1200)", linewidth=1.5)
 
-# Highlight heavy increasing slopes
-heavy_increasing = data[data['heavy_slope'] == 'Heavy Increasing']
-plt.scatter(heavy_increasing['datetime'], heavy_increasing['rolling_mean'], 
-            color='green', label='Heavy Increasing', s=10, zorder=5)
-
-# Highlight heavy decreasing slopes
-heavy_decreasing = data[data['heavy_slope'] == 'Heavy Decreasing']
-plt.scatter(heavy_decreasing['datetime'], heavy_decreasing['rolling_mean'], 
-            color='red', label='Heavy Decreasing', s=10, zorder=5)
-
-# Highlight holding slopes
-heavy_increasing = data[data['heavy_slope'] == 'Holding']
-plt.scatter(heavy_increasing['datetime'], heavy_increasing['rolling_mean'], 
-            color='purple', label='Holding', s=10, zorder=5)
-
-# Highlight Nothing slopes
-heavy_increasing = data[data['heavy_slope'] == 'Nothing']
-plt.scatter(heavy_increasing['datetime'], heavy_increasing['rolling_mean'], 
-            color='grey', label='Nothing', s=10, zorder=5)
+# Highlight normalized heavy slope categories
+for slope_category, color, label in [('Heavy Increasing', 'green', 'Heavy Increasing'),
+                                     ('Heavy Decreasing', 'red', 'Heavy Decreasing'),
+                                     ('Holding', 'purple', 'Holding'),
+                                     ('Nothing', 'grey', 'Nothing')]:
+    slope_data = data[data['heavy_slope'] == slope_category]
+    plt.scatter(slope_data['datetime'], slope_data['rolling_mean'], color=color, label=label, s=10, zorder=5)
 
 # Highlight the top 5 peaks
 plt.scatter(data['datetime'][highest_peaks_indices], data['rolling_mean'][highest_peaks_indices], 
             color='blue', label='Top 5 Peaks', s=100, marker='x', zorder=5)
 
-plt.title("Rolling Mean with Top 5 Peaks and Heavy Slopes")
+plt.title("Rolling Mean with Normalized Heavy Slopes")
 plt.xlabel("Datetime")
 plt.ylabel("Rolling Mean (°C)")
 plt.legend()

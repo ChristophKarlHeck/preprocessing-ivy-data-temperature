@@ -19,6 +19,19 @@ merged_data = pd.merge_asof(
     direction='nearest'
 )
 
+# Count the number of datasets from each phase
+
+phase_counts = merged_data['phase'].value_counts()
+# Plot the dataset counts for each phase
+plt.figure(figsize=(10, 6))
+phase_counts.plot(kind='bar', color=['green', 'red', 'purple', 'grey'])
+plt.title("Number of Datasets per Phase")
+plt.xlabel("Phase")
+plt.ylabel("Number of Datasets")
+plt.xticks(rotation=45)
+plt.grid(axis='y')
+plt.show()
+
 # Plot the three subplots
 fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
 
@@ -52,6 +65,16 @@ plt.show()
 # Process data for writing the new file
 merged_data['Heat'] = merged_data['phase'].apply(lambda x: 1 if x in ['Increasing', 'Holding'] else 0)
 
+heat_counts = merged_data['Heat'].value_counts()
+plt.figure(figsize=(10, 6))
+heat_counts.plot(kind='bar', color=['blue', 'red'])
+plt.title("Number of Datasets per Phase")
+plt.xlabel("Heat")
+plt.ylabel("Number of Datasets")
+plt.xticks(rotation=45)
+plt.grid(axis='y')
+plt.show()
+
 # Extract 10-minute slices (600 samples at 1 Hz)
 results = []
 for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
@@ -76,8 +99,6 @@ for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
 final_df = pd.DataFrame(results)
 output_path = "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed/P3_ready_to_train.csv"
 final_df.to_csv(output_path, index=False)
-
-print(final_df.describe())
 
 # Select a few random slices to plot
 slices_to_plot = final_df.sample(n=5, random_state=42)  # Change n to plot more or fewer slices

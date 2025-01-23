@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import find_peaks, savgol_filter
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 # Constants
 CONFIG = {
@@ -77,29 +77,37 @@ def label_holding_areas(data):
     return data, highest_peaks_indices
 
 def normalize_blocks(data):
-    # Assign a unique ID to consecutive blocks of the same slope
+    # Assign a unique ID to consecutive blocks of the same phase
     data['block'] = (data['phase'] != data['phase'].shift()).cumsum()
 
     # Calculate the size of each block
     block_sizes = data.groupby('block').size()
 
     # Normalize by merging small blocks into surrounding larger blocks
-    min_block_size = CONFIG["min_block_size_normalization"]  # Define a minimum block size for normalization (5 min)
+    min_block_size = CONFIG["min_block_size_normalization"]
     for block_id, size in block_sizes.items():
         if size < min_block_size:
-            # Find indices of the current block
             indices = data[data['block'] == block_id].index
-            # Assign the label of the nearest neighboring block
-            if indices[0] > 0:
-                data.loc[indices, 'phase'] = data.loc[indices[0] - 1, 'phase']
-            elif indices[-1] < len(data) - 1:
-                data.loc[indices, 'phase'] = data.loc[indices[-1] + 1, 'phase']
+
+            if len(indices) > 0:
+                previous_index = indices[0] - 1 if indices[0] > 0 else None
+                next_index = indices[-1] + 1 if indices[-1] < data.index[-1] else None
+
+                # Assign the phase of the nearest valid neighbor
+                if previous_index is not None and previous_index in data.index:
+                    data.loc[indices, 'phase'] = data.loc[previous_index, 'phase']
+                elif next_index is not None and next_index in data.index:
+                    data.loc[indices, 'phase'] = data.loc[next_index, 'phase']
+                else:
+                    # No valid neighbors; assign 'Nothing'
+                    data.loc[indices, 'phase'] = 'Nothing'
 
     # Drop the temporary block column
     data.drop(columns='block', inplace=True)
     return data
 
-def plot_smoothed_data(data, highest_peaks_indices):
+
+def plot_smoothed_data(data, highest_peaks_indices, day):
     # Plot the rolling mean with normalized heavy slope regions highlighted
     plt.figure(figsize=(15, 6))
     plt.plot(data['datetime'], data['rolling_mean'], color='orange', label="Rolling Mean (Window Size = 1200)", linewidth=1.5)
@@ -116,7 +124,7 @@ def plot_smoothed_data(data, highest_peaks_indices):
     plt.scatter(data['datetime'][highest_peaks_indices], data['rolling_mean'][highest_peaks_indices], 
                 color='blue', label='Top 5 Peaks', s=100, marker='x', zorder=5)
 
-    plt.title("Rolling Mean with Normalized Heavy Slopes")
+    plt.title(f"Rolling Mean with Normalized Heavy Slopes ({day})")
     plt.xlabel("Datetime")
     plt.ylabel("Rolling Mean (°C)")
     plt.legend()
@@ -124,7 +132,7 @@ def plot_smoothed_data(data, highest_peaks_indices):
     plt.tight_layout()
     plt.show()
 
-def plot_original_data(data):
+def plot_original_data(data, day):
     # Plot the original data with labels for Increasing, Decreasing, Holding, and Nothing
     plt.figure(figsize=(15, 6))
     plt.plot(data['datetime'], data['avg_air_temp'], color='orange', label="Original Data (avg_air_temp)", linewidth=1.5)
@@ -137,7 +145,7 @@ def plot_original_data(data):
         slope_data = data[data['phase'] == slope_category]
         plt.scatter(slope_data['datetime'], slope_data['avg_air_temp'], color=color, label=label, s=10, zorder=5)
 
-    plt.title("Original Data (avg_air_temp) with Labels")
+    plt.title(f"Original Data (avg_air_temp) with Labels ({day})")
     plt.xlabel("Datetime")
     plt.ylabel("Average Air Temperature (°C)")
     plt.legend()
@@ -147,21 +155,53 @@ def plot_original_data(data):
 
 def main():
     file_path = "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed/temperature_preprocessed.csv"
-    single_day = '2025-01-13'
 
-    data = load_and_prepare_data(file_path, single_day)
-    data = smooth_data(data)
-     # Calculate gradients and label data
-    data = calculate_gradients_and_label(data)
+    # Load the entire dataset to display available dates
+    all_data = pd.read_csv(file_path)
+    all_data['datetime'] = pd.to_datetime(all_data['datetime'])
+    print("Available temperature data:")
+    print("Head:\n",all_data[['datetime', 'avg_air_temp']].head())
+    print("Tail:\n",all_data[['datetime', 'avg_air_temp']].tail())
+
+    # Prompt user to enter start and end dates
+    start_date = input("Enter the start date (YYYY-MM-DD): ")
+    end_date = input("Enter the end date (YYYY-MM-DD): ")
+
+    current_date = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+    while current_date <= end_date:
+        single_day = current_date.strftime('%Y-%m-%d')
+        print(f"Processing data for {single_day}...")
+
+        data = load_and_prepare_data(file_path, single_day)
+        data = smooth_data(data)
+        
+        # Calculate gradients and label data
+        data = calculate_gradients_and_label(data)
 
         # Extend holding area around peaks
-    data, highest_peaks_indices = label_holding_areas(data)
+        data, highest_peaks_indices = label_holding_areas(data)
 
-    data = normalize_blocks(data)
+        data = normalize_blocks(data)
 
-    # Plot results
-    plot_smoothed_data(data, highest_peaks_indices)
-    plot_original_data(data)
+        # Plot results
+        plot_smoothed_data(data, highest_peaks_indices, single_day)
+        plot_original_data(data, single_day)
+
+        # Prompt user for config adjustments
+        print("Would you like to adjust the configuration for this day? (yes/no)")
+        if input().lower() == 'yes':
+            print("Enter new parameters (leave blank to keep current values):")
+            for key in CONFIG.keys():
+                new_value = input(f"{key} (current: {CONFIG[key]}): ")
+                if new_value:
+                    CONFIG[key] = type(CONFIG[key])(new_value)
+
+            print("Configuration updated. Re-running for the same day...")
+            continue  # Re-run for the same day with updated config
+
+        current_date += timedelta(days=1)
 
 if __name__ == "__main__":
     main()

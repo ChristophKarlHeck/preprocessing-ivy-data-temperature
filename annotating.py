@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob
 import os
+import argparse
 import numpy as np
 from scipy.signal import find_peaks, savgol_filter
 from datetime import timedelta, datetime
@@ -188,22 +189,23 @@ def write_week_to_file(file_path, annotated_data):
     print(f"Annotated week data saved to: {file_path}")
 
 def main():
-    data_dir= "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed"
+    # Argument parser
+    parser = argparse.ArgumentParser(description="Preprocess CSV files.")
+    parser.add_argument("--data_dir", required=True, help="Directory with raw files.")
+    args = parser.parse_args()
+
+    data_dir = args.data_dir.lower()
     temp_files = discover_files(data_dir, "temp")
     temp_df = load_and_combine_csv(temp_files)
 
     # Load the entire dataset to display available dates
     temp_df['datetime'] = pd.to_datetime(temp_df['datetime'])
-    print("Available temperature data:")
-    print("Head:\n",temp_df[['datetime', 'avg_air_temp']].head())
-    print("Tail:\n",temp_df[['datetime', 'avg_air_temp']].tail())
 
     # Prompt user to enter start and end dates
-    start_date = input("Enter the start date (YYYY-MM-DD): ")
-    end_date = input("Enter the end date (YYYY-MM-DD): ")
+    start_date = temp_df['datetime'].min().date()
+    end_date = temp_df['datetime'].max().date()
 
-    current_date = datetime.strptime(start_date, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    current_date = start_date
 
     annotated_week_data = []
 

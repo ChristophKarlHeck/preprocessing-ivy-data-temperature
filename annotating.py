@@ -12,7 +12,8 @@ CONFIG = {
     "quantile_decrease": 0.12,              # 12th percentile
     "temperature_deviation_holding": 0.5,   # 0.5 °C
     "time_window_holding": 60,              # 1h
-    "min_block_size_normalization": 600     # 10 min
+    "min_block_size_normalization": 600,    # 10 min
+    "minimum_distance_between_peaks": 5400  # 1.5h
 }
 
 def load_and_prepare_data(file_path, single_day):
@@ -49,7 +50,7 @@ def label_holding_areas(data):
     peaks_indices, properties = find_peaks(
         data['rolling_mean'],
         prominence=0.1,  # Minimum prominence of peaks
-        distance=5400,   # Minimum distance between peaks -> 1.5h
+        distance=CONFIG["minimum_distance_between_peaks"],   # Minimum distance between peaks -> 1.5h
         height=None      # Can add a minimum height if required
     )
 

@@ -164,7 +164,6 @@ def plot_original_data(data, day):
 
 def plot_entire_week(data):
     # Plot the original data with labels for Increasing, Decreasing, Holding, and Nothing
-    data = pd.concat(data, ignore_index=True)
     plt.figure(figsize=(20, 8))
     plt.plot(data['datetime'], data['avg_air_temp'], color='orange', label="Original Data (avg_air_temp)", linewidth=1.5)
 
@@ -183,6 +182,10 @@ def plot_entire_week(data):
     plt.grid()
     plt.tight_layout()
     plt.show()
+
+def write_week_to_file(file_path, annotated_data):
+    annotated_data.to_csv(file_path, index=False)
+    print(f"Annotated week data saved to: {file_path}")
 
 def main():
     data_dir= "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed"
@@ -238,10 +241,9 @@ def main():
         annotated_week_data.append(data)
         current_date += timedelta(days=1)
 
+    annotated_week_data = pd.concat(annotated_week_data, ignore_index=True)
+    write_week_to_file(os.path.join(data_dir, "temp_annotated.csv"), annotated_week_data)
     plot_entire_week(annotated_week_data)
-
-    phyto_files = discover_files(data_dir, "P3")
-    phyto_df = load_and_combine_csv(phyto_files)
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import glob
+import os
 import numpy as np
 from scipy.signal import find_peaks, savgol_filter
 from datetime import timedelta, datetime
@@ -15,6 +17,13 @@ CONFIG = {
     "min_block_size_normalization": 600,    # 10 min
     "minimum_distance_between_peaks": 5400  # 1.5h
 }
+
+def discover_files(data_dir: str, prefix: str) -> list[str]:
+    files = glob.glob(os.path.join(data_dir, f"{prefix}*.csv"))
+    return files
+
+def load_and_combine_csv(files: list[str]) -> pd.DataFrame:
+    return pd.concat([pd.read_csv(file) for file in files], ignore_index=True)
 
 def load_and_prepare_data(file_path, single_day):
     # Load the CSV file
@@ -153,15 +162,38 @@ def plot_original_data(data, day):
     plt.tight_layout()
     plt.show()
 
+def plot_entire_week(data):
+    # Plot the original data with labels for Increasing, Decreasing, Holding, and Nothing
+    data = pd.concat(data, ignore_index=True)
+    plt.figure(figsize=(20, 8))
+    plt.plot(data['datetime'], data['avg_air_temp'], color='orange', label="Original Data (avg_air_temp)", linewidth=1.5)
+
+    # Highlight labels on the original data
+    for slope_category, color, label in [('Increasing', 'green', 'Increasing'),
+                                        ('Decreasing', 'red', 'Decreasing'),
+                                        ('Holding', 'purple', 'Holding'),
+                                        ('Nothing', 'grey', 'Nothing')]:
+        slope_data = data[data['phase'] == slope_category]
+        plt.scatter(slope_data['datetime'], slope_data['avg_air_temp'], color=color, label=label, s=10, zorder=5)
+
+    plt.title("Original Data (avg_air_temp) with Labels for the Entire Week")
+    plt.xlabel("Datetime")
+    plt.ylabel("Average Air Temperature (°C)")
+    plt.legend(loc='upper right')
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+
 def main():
-    file_path = "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed/temperature_preprocessed.csv"
+    data_dir= "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed"
+    temp_files = discover_files(data_dir, "temp")
+    temp_df = load_and_combine_csv(temp_files)
 
     # Load the entire dataset to display available dates
-    all_data = pd.read_csv(file_path)
-    all_data['datetime'] = pd.to_datetime(all_data['datetime'])
+    temp_df['datetime'] = pd.to_datetime(temp_df['datetime'])
     print("Available temperature data:")
-    print("Head:\n",all_data[['datetime', 'avg_air_temp']].head())
-    print("Tail:\n",all_data[['datetime', 'avg_air_temp']].tail())
+    print("Head:\n",temp_df[['datetime', 'avg_air_temp']].head())
+    print("Tail:\n",temp_df[['datetime', 'avg_air_temp']].tail())
 
     # Prompt user to enter start and end dates
     start_date = input("Enter the start date (YYYY-MM-DD): ")
@@ -170,11 +202,13 @@ def main():
     current_date = datetime.strptime(start_date, '%Y-%m-%d')
     end_date = datetime.strptime(end_date, '%Y-%m-%d')
 
+    annotated_week_data = []
+
     while current_date <= end_date:
         single_day = current_date.strftime('%Y-%m-%d')
         print(f"Processing data for {single_day}...")
 
-        data = load_and_prepare_data(file_path, single_day)
+        data = load_and_prepare_data(temp_files[0], single_day)
         data = smooth_data(data)
         
         # Calculate gradients and label data
@@ -190,8 +224,8 @@ def main():
         plot_original_data(data, single_day)
 
         # Prompt user for config adjustments
-        print("Would you like to adjust the configuration for this day? (yes/no)")
-        if input().lower() == 'yes':
+        print("Would you like to adjust the configuration for this day? (y/n)")
+        if input().lower() == 'y':
             print("Enter new parameters (leave blank to keep current values):")
             for key in CONFIG.keys():
                 new_value = input(f"{key} (current: {CONFIG[key]}): ")
@@ -201,7 +235,13 @@ def main():
             print("Configuration updated. Re-running for the same day...")
             continue  # Re-run for the same day with updated config
 
+        annotated_week_data.append(data)
         current_date += timedelta(days=1)
+
+    plot_entire_week(annotated_week_data)
+
+    phyto_files = discover_files(data_dir, "P3")
+    phyto_df = load_and_combine_csv(phyto_files)
 
 if __name__ == "__main__":
     main()

@@ -40,9 +40,9 @@ def calculate_gradients_and_label(data):
     increasing_threshold = data['gradient'].quantile(CONFIG["quantile_increase"])  # 90th percentile
     decreasing_threshold = data['gradient'].quantile(CONFIG["quantile_decrease"])  # 10th percentile
 
-    data['heavy_slope'] = 'Nothing'
-    data.loc[data['gradient'] > increasing_threshold, 'heavy_slope'] = 'Heavy Increasing'
-    data.loc[data['gradient'] < decreasing_threshold, 'heavy_slope'] = 'Heavy Decreasing'
+    data['phase'] = 'Nothing'
+    data.loc[data['gradient'] > increasing_threshold, 'phase'] = 'Increasing'
+    data.loc[data['gradient'] < decreasing_threshold, 'phase'] = 'Decreasing'
     return data
 
 def label_holding_areas(data):
@@ -72,13 +72,13 @@ def label_holding_areas(data):
             (data['datetime'] <= end_time) &
             (data['rolling_mean'] >= peak_value - CONFIG["temperature_deviation_holding"])
         ]
-        data.loc[holding_indices, 'heavy_slope'] = 'Holding'
+        data.loc[holding_indices, 'phase'] = 'Holding'
     
     return data, highest_peaks_indices
 
 def normalize_blocks(data):
     # Assign a unique ID to consecutive blocks of the same slope
-    data['block'] = (data['heavy_slope'] != data['heavy_slope'].shift()).cumsum()
+    data['block'] = (data['phase'] != data['phase'].shift()).cumsum()
 
     # Calculate the size of each block
     block_sizes = data.groupby('block').size()
@@ -91,9 +91,9 @@ def normalize_blocks(data):
             indices = data[data['block'] == block_id].index
             # Assign the label of the nearest neighboring block
             if indices[0] > 0:
-                data.loc[indices, 'heavy_slope'] = data.loc[indices[0] - 1, 'heavy_slope']
+                data.loc[indices, 'phase'] = data.loc[indices[0] - 1, 'phase']
             elif indices[-1] < len(data) - 1:
-                data.loc[indices, 'heavy_slope'] = data.loc[indices[-1] + 1, 'heavy_slope']
+                data.loc[indices, 'phase'] = data.loc[indices[-1] + 1, 'phase']
 
     # Drop the temporary block column
     data.drop(columns='block', inplace=True)
@@ -105,11 +105,11 @@ def plot_smoothed_data(data, highest_peaks_indices):
     plt.plot(data['datetime'], data['rolling_mean'], color='orange', label="Rolling Mean (Window Size = 1200)", linewidth=1.5)
 
     # Highlight normalized heavy slope categories
-    for slope_category, color, label in [('Heavy Increasing', 'green', 'Heavy Increasing'),
-                                        ('Heavy Decreasing', 'red', 'Heavy Decreasing'),
+    for slope_category, color, label in [('Increasing', 'green', 'Increasing'),
+                                        ('Decreasing', 'red', 'Decreasing'),
                                         ('Holding', 'purple', 'Holding'),
                                         ('Nothing', 'grey', 'Nothing')]:
-        slope_data = data[data['heavy_slope'] == slope_category]
+        slope_data = data[data['phase'] == slope_category]
         plt.scatter(slope_data['datetime'], slope_data['rolling_mean'], color=color, label=label, s=10, zorder=5)
 
     # Highlight the top 5 peaks
@@ -130,11 +130,11 @@ def plot_original_data(data):
     plt.plot(data['datetime'], data['avg_air_temp'], color='orange', label="Original Data (avg_air_temp)", linewidth=1.5)
 
     # Highlight labels on the original data
-    for slope_category, color, label in [('Heavy Increasing', 'green', 'Heavy Increasing'),
-                                        ('Heavy Decreasing', 'red', 'Heavy Decreasing'),
+    for slope_category, color, label in [('Increasing', 'green', 'Increasing'),
+                                        ('Decreasing', 'red', 'Decreasing'),
                                         ('Holding', 'purple', 'Holding'),
                                         ('Nothing', 'grey', 'Nothing')]:
-        slope_data = data[data['heavy_slope'] == slope_category]
+        slope_data = data[data['phase'] == slope_category]
         plt.scatter(slope_data['datetime'], slope_data['avg_air_temp'], color=color, label=label, s=10, zorder=5)
 
     plt.title("Original Data (avg_air_temp) with Labels")

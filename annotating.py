@@ -16,71 +16,15 @@ data['datetime'] = pd.to_datetime(data['datetime'])
 single_day = '2025-01-13'
 data = data[data['datetime'].dt.date == pd.to_datetime(single_day).date()]
 
-# ===== Block Size Approach =====
-# block_size = 120
-# data['block'] = data.index // block_size
-
-# # Calculate block-level statistics
-# block_stats = data.groupby('block')['avg_air_temp'].agg(['mean', 'std', 'min', 'max'])
-# block_stats['mean_diff'] = block_stats['mean'].diff().fillna(0)  # Fill NaN for the first block
-# block_stats['phase_block'] = 'NotYet'
-# block_stats.loc[block_stats['mean_diff'].abs() < 0.17, 'phase_block'] = "Nothing"
-# block_stats.loc[block_stats['mean_diff'] >= 0.17, 'phase_block'] = 'Increasing'
-# block_stats.loc[block_stats['mean_diff'] <= -0.17, 'phase_block'] = 'Decreasing'
-# block_stats.loc[(block_stats['mean_diff'].abs() < 0.17) & (block_stats['mean'] > 24), 'phase_block'] = 'Holding'
-
-# # Map block statistics to the original data
-# block_stats = block_stats.reset_index()
-# data['phase_block'] = data['block'].map(block_stats.set_index('block')['phase_block'])
-
-# # Plot
-# block_timestamps = data.groupby('block')['datetime'].first().reset_index(drop=True)
-# plt.figure(figsize=(15, 6))
-# plt.plot(block_timestamps, block_stats['mean_diff'], color='orange', label="Mean Difference", linewidth=1.5)
-# plt.title("Mean Difference Between Blocks")
-# plt.xlabel("Datetime")
-# plt.ylabel("Mean Difference (°C)")
-# plt.legend()
-# plt.grid()
-# plt.tight_layout()
-# plt.show()
-
-# plt.figure(figsize=(15, 6))
-# plt.plot(block_timestamps, block_stats['mean_diff'], color='orange', label="Mean Difference", linewidth=1.5)
-
-# # Identify 5 highest and 5 lowest peaks
-# highest_peaks = block_stats['mean_diff'].nlargest(5)
-# lowest_peaks = block_stats['mean_diff'].nsmallest(5)
-
-# # Plot highest and lowest peaks
-# plt.scatter(block_timestamps[highest_peaks.index], highest_peaks, color='blue', label='Top 5 Highest Peaks', s=100, zorder=5)
-# plt.scatter(block_timestamps[lowest_peaks.index], lowest_peaks, color='red', label='Top 5 Lowest Peaks', s=100, zorder=5)
-
-# plt.title("Mean Difference Between Blocks with Top 5 Highest and Lowest Peaks")
-# plt.xlabel("Datetime")
-# plt.ylabel("Mean Difference (°C)")
-# plt.legend()
-# plt.grid()
-# plt.tight_layout()
-# plt.show()
-
 # ===== Window Sliding Approach ===== Focusing on decrease
 window_size = 1200
 data['rolling_mean'] = data['avg_air_temp'].rolling(window=window_size, min_periods=1).mean()
-data['previous_mean'] = data['rolling_mean'].shift()
-data['trend_window'] = data['rolling_mean'] - data['previous_mean']
-
-data['phase_window'] = 'NotYet'
-data.loc[data['trend_window'].abs() < 0.0008, 'phase_window'] = "Nothing"
-data.loc[data['trend_window'] >= 0.0008, 'phase_window'] = 'Increasing'
-data.loc[data['trend_window'] <= -0.0008, 'phase_window'] = 'Decreasing'
-data.loc[(data['trend_window'].abs() < 0.0008) & (data['rolling_mean'] > 24), 'phase_window'] = 'Holding'
 
 # Use `find_peaks` with additional parameters to refine peak detection
 peaks_indices, properties = find_peaks(
     data['rolling_mean'],
     prominence=0.1,  # Minimum prominence of peaks
-    distance=5400,   # Minimum distance between peaks
+    distance=5400,   # Minimum distance between peaks -> 1.5h
     height=None      # Can add a minimum height if required
 )
 
@@ -158,88 +102,3 @@ plt.legend()
 plt.grid()
 plt.tight_layout()
 plt.show()
-
-# Combine the peak and heavy slope data for display
-# combined_slope_and_peaks_data = pd.concat([
-#     heavy_increasing[['datetime', 'rolling_mean', 'gradient', 'heavy_slope']],
-#     heavy_decreasing[['datetime', 'rolling_mean', 'gradient', 'heavy_slope']],
-#     highest_peaks_data[['datetime', 'rolling_mean']].rename(columns={'rolling_mean': 'peak_value'}),
-# ])
-
-# tools.display_dataframe_to_user(name="Combined Peaks and Heavy Slope Data", dataframe=combined_slope_and_peaks_data)
-
-# ===== Derivative-Based Approach =====
-# data['time_diff'] = data['datetime'].diff().dt.total_seconds()  # Time difference in seconds
-# data['derivative'] = data['avg_leaf_temp'].diff() / data['time_diff']
-# data['phase_derivative'] = 'NotYet'
-# data.loc[data['derivative'] > 0.05, 'phase_derivative'] = 'Increasing'
-# data.loc[data['derivative'] < -0.05, 'phase_derivative'] = 'Decreasing'
-# data.loc[data['derivative'].abs() <= 0.05, 'phase_derivative'] = 'Holding'
-
-# # Plot
-# plt.figure(figsize=(15, 6))
-# plt.plot(data['datetime'], data['derivative'], color='orange', label="Trend Window", linewidth=1.5)
-# plt.axhline(0, color='black', linestyle='--', linewidth=0.8)  # Reference line for zero trend
-# plt.title("Trend Window (Derivative-Based Approach)")
-# plt.xlabel("Datetime")
-# plt.ylabel("Trend (°C per Window)")
-# plt.legend()
-# plt.grid()
-# plt.tight_layout()
-# plt.show()
-
-
-# ===== Combined Phases =====
-# Priority: Holding > Increasing > Decreasing > Nothing
-# phase_priority = {'Holding': 1, 'Increasing': 1, 'Decreasing': 1, 'Nothing': 1}
-# data['combined_phase'] = data[['phase_block', 'phase_window', 'phase_derivative']].apply(
-#     lambda row: max([x for x in row if x in phase_priority], key=lambda x: phase_priority[x]), axis=1
-# )
-
-# ===== Visualization =====
-# # Define colors for phases
-# phase_colors = {'Nothing': 'gray', 'Increasing': 'red', 'Decreasing': 'blue', 'Holding': 'green', 'NotYet': 'yellow'}
-
-# # Create subplots for each method
-# fig, axes = plt.subplots(4, 1, figsize=(15, 24), sharex=True)
-
-# # Plot block-level phases
-# for phase, color in phase_colors.items():
-#     phase_data = data[data['phase_block'] == phase]
-#     axes[0].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
-# axes[0].set_title("Block-Based Phases")
-# axes[0].set_ylabel("Temperature (°C)")
-# axes[0].legend()
-# axes[0].grid()
-
-# # Plot rolling window phases
-# for phase, color in phase_colors.items():
-#     phase_data = data[data['phase_window'] == phase]
-#     axes[1].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
-# axes[1].set_title("Window Sliding Phases")
-# axes[1].set_ylabel("Temperature (°C)")
-# axes[1].legend()
-# axes[1].grid()
-
-# # Plot derivative-based phases
-# for phase, color in phase_colors.items():
-#     phase_data = data[data['phase_derivative'] == phase]
-#     axes[2].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
-# axes[2].set_title("Derivative-Based Phases")
-# axes[2].set_ylabel("Temperature (°C)")
-# axes[2].legend()
-# axes[2].grid()
-
-# # Plot combined phases
-# for phase, color in phase_colors.items():
-#     phase_data = data[data['combined_phase'] == phase]
-#     axes[3].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
-# axes[3].set_title("Combined Phases")
-# axes[3].set_xlabel("Datetime")
-# axes[3].set_ylabel("Temperature (°C)")
-# axes[3].legend()
-# axes[3].grid()
-
-# # Adjust layout and show the plot
-# plt.tight_layout()
-# plt.show()

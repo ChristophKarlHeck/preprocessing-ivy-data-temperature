@@ -98,11 +98,11 @@ print(highest_peaks_data)
 data['gradient'] = np.gradient(data['rolling_mean'])
 
 # Define thresholds dynamically based on gradient distribution
-increasing_threshold = data['gradient'].quantile(0.90)  # 90th percentile
-decreasing_threshold = data['gradient'].quantile(0.10)  # 10th percentile
+increasing_threshold = data['gradient'].quantile(0.88)  # 90th percentile
+decreasing_threshold = data['gradient'].quantile(0.12)  # 10th percentile
 
 # Mark regions of heavy increasing and decreasing slopes
-data['heavy_slope'] = 'None'
+data['heavy_slope'] = 'Nothing'
 data.loc[data['gradient'] > increasing_threshold, 'heavy_slope'] = 'Heavy Increasing'
 data.loc[data['gradient'] < decreasing_threshold, 'heavy_slope'] = 'Heavy Decreasing'
 
@@ -137,10 +137,15 @@ heavy_decreasing = data[data['heavy_slope'] == 'Heavy Decreasing']
 plt.scatter(heavy_decreasing['datetime'], heavy_decreasing['rolling_mean'], 
             color='red', label='Heavy Decreasing', s=10, zorder=5)
 
-# Highlight heavy increasing slopes
+# Highlight holding slopes
 heavy_increasing = data[data['heavy_slope'] == 'Holding']
 plt.scatter(heavy_increasing['datetime'], heavy_increasing['rolling_mean'], 
             color='purple', label='Holding', s=10, zorder=5)
+
+# Highlight Nothing slopes
+heavy_increasing = data[data['heavy_slope'] == 'Nothing']
+plt.scatter(heavy_increasing['datetime'], heavy_increasing['rolling_mean'], 
+            color='grey', label='Nothing', s=10, zorder=5)
 
 # Highlight the top 5 peaks
 plt.scatter(data['datetime'][highest_peaks_indices], data['rolling_mean'][highest_peaks_indices], 

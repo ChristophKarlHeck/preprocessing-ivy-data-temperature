@@ -112,3 +112,23 @@ plt.legend()
 plt.grid()
 plt.tight_layout()
 plt.show()
+
+# Plot the original data with labels for Increasing, Decreasing, Holding, and Nothing
+plt.figure(figsize=(15, 6))
+plt.plot(data['datetime'], data['avg_air_temp'], color='orange', label="Original Data (avg_air_temp)", linewidth=1.5)
+
+# Highlight labels on the original data
+for slope_category, color, label in [('Heavy Increasing', 'green', 'Heavy Increasing'),
+                                     ('Heavy Decreasing', 'red', 'Heavy Decreasing'),
+                                     ('Holding', 'purple', 'Holding'),
+                                     ('Nothing', 'grey', 'Nothing')]:
+    slope_data = data[data['heavy_slope'] == slope_category]
+    plt.scatter(slope_data['datetime'], slope_data['avg_air_temp'], color=color, label=label, s=10, zorder=5)
+
+plt.title("Original Data (avg_air_temp) with Labels")
+plt.xlabel("Datetime")
+plt.ylabel("Average Air Temperature (°C)")
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()

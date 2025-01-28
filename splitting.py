@@ -20,8 +20,8 @@ merged_data = pd.merge_asof(
 )
 
 # Count the number of datasets from each phase
-
 phase_counts = merged_data['phase'].value_counts()
+
 # Plot the dataset counts for each phase
 plt.figure(figsize=(10, 6))
 phase_counts.plot(kind='bar', color=['green', 'red', 'purple', 'grey'])
@@ -54,7 +54,7 @@ for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding',
     phase_data = merged_data[merged_data['phase'] == phase]
     axes[2].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
 axes[2].set_title('Temperature with Phases')
-axes[2].set_ylabel('Temperature (°C)')
+axes[2].set_ylabel('Temperature (\u00b0C)')
 axes[2].grid()
 axes[2].legend(loc='upper right')
 
@@ -65,15 +65,32 @@ plt.show()
 # Process data for writing the new file
 merged_data['Heat'] = merged_data['phase'].apply(lambda x: 1 if x in ['Increasing', 'Holding'] else 0)
 
-heat_counts = merged_data['Heat'].value_counts()
-plt.figure(figsize=(10, 6))
-heat_counts.plot(kind='bar', color=['blue', 'red'])
-plt.title("Number of Datasets per Phase")
-plt.xlabel("Heat")
-plt.ylabel("Number of Datasets")
-plt.xticks(rotation=45)
-plt.grid(axis='y')
+# Plot the three subplots
+# Plot the two subplots
+fig, axes = plt.subplots(2, 1, figsize=(15, 12), sharex=True)
+
+# First subplot: Heat annotation
+for heat, color in [(1, 'red'), (0, 'blue')]:
+    heat_data = merged_data[merged_data['Heat'] == heat]
+    axes[0].scatter(heat_data['datetime'], heat_data['Heat'], color=color, label=f'Heat {heat}', s=10)
+axes[0].set_title('Heat Annotation in merged_data')
+axes[0].set_ylabel('Heat')
+axes[0].legend()
+axes[0].grid()
+
+# Second subplot: Preprocessed temperatures with phases
+for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
+    phase_data = merged_data[merged_data['phase'] == phase]
+    axes[1].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
+axes[1].set_title('Preprocessed Temperatures with Phases')
+axes[1].set_ylabel('Temperature (°C)')
+axes[1].legend(loc='upper right')
+axes[1].grid()
+
+plt.xlabel('Datetime')
+plt.tight_layout()
 plt.show()
+
 
 # Extract 10-minute slices (600 samples at 1 Hz)
 results = []
@@ -97,11 +114,33 @@ for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
 
 # Create the final DataFrame and save to CSV
 final_df = pd.DataFrame(results)
+
+# Filter out 'Decreasing' phase
+final_df = final_df[final_df['Phase'] != 'Decreasing']
+
+# Balance the dataset
+heat_1 = final_df[final_df['Heat'] == 1]
+heat_0 = final_df[final_df['Heat'] == 0].sample(n=len(heat_1), random_state=42)
+final_df = pd.concat([heat_1, heat_0]).sample(frac=1, random_state=42).reset_index(drop=True)
+
+heat_counts = final_df['Heat'].value_counts()
+plt.figure(figsize=(10, 6))
+heat_counts.plot(kind='bar', color=['blue', 'red'])
+plt.title("Balanced Datasets")
+plt.xlabel("Heat")
+plt.ylabel("Number of Datasets")
+plt.xticks(rotation=45)
+plt.grid(axis='y')
+plt.show()
+
 output_path = "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed/P3_ready_to_train.csv"
 final_df.to_csv(output_path, index=False)
 
+
+
+
 # Select a few random slices to plot
-slices_to_plot = final_df.sample(n=5, random_state=42)  # Change n to plot more or fewer slices
+slices_to_plot = final_df[0:5] # Change n to plot more or fewer slices
 
 # Plot each slice
 fig, axes = plt.subplots(len(slices_to_plot), 1, figsize=(12, len(slices_to_plot) * 3))
@@ -120,4 +159,3 @@ for i, (_, slice_row) in enumerate(slices_to_plot.iterrows()):
 
 plt.tight_layout()
 plt.show()
-

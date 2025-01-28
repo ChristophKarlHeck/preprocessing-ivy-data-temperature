@@ -63,6 +63,15 @@ plt.tight_layout()
 plt.show()
 
 # Process data for writing the new file
+
+# Create a column to identify continuous datetime blocks
+merged_data['time_diff'] = merged_data['datetime'].diff().gt(pd.Timedelta(seconds=1))
+merged_data['group'] = merged_data['time_diff'].cumsum()
+
+
+# Drop the auxiliary column as it's no longer needed
+merged_data.drop(columns=['time_diff'], inplace=True)
+
 merged_data['Heat'] = merged_data['phase'].apply(lambda x: 1 if x in ['Increasing', 'Holding'] else 0)
 
 # Plot the three subplots
@@ -92,25 +101,29 @@ plt.tight_layout()
 plt.show()
 
 
-# Extract 10-minute slices (600 samples at 1 Hz)
+# Extract 10-minute slices based on continuous datetime groups
 results = []
 for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
-    for phase, phase_data in merged_data.groupby('phase'):
-        start_index = 0
-        while start_index + 600 <= len(phase_data):
-            slice_data = phase_data.iloc[start_index:start_index + 600]
-            # Check if the slice contains only one unique Heat value
-            if slice_data['Heat'].nunique() == 1:
+    for (phase, group), phase_data in merged_data.groupby(['Heat', 'group']):
+        current_time = phase_data['datetime'].min()
+        end_time = phase_data['datetime'].max()
+        while current_time + pd.Timedelta(minutes=10) <= end_time:
+            slice_data = phase_data[
+                (phase_data['datetime'] >= current_time) &
+                (phase_data['datetime'] < current_time + pd.Timedelta(minutes=10))
+            ]
+            if len(slice_data) == 600:# and slice_data['Heat'].nunique() == 1:
                 row = {
-                    'Plant': plants.iloc[0]['P3'],  # Example: Using the first plant ID for simplicity
+                    'Start_Datetime': slice_data['datetime'].iloc[0],
+                    'End_Datetime': slice_data['datetime'].iloc[-1],
+                    'Plant': plants.iloc[0]['P3'],
                     'Channel': 1 if channel == 'CH1_milli_volt' else 2,
                     'Phase': phase,
                     'Heat': slice_data['Heat'].iloc[0]
                 }
                 row.update({f'val{i+1}': slice_data[channel].iloc[i] for i in range(600)})
                 results.append(row)
-            # Move to the next slice
-            start_index += 600
+            current_time += pd.Timedelta(minutes=10)
 
 # Create the final DataFrame and save to CSV
 final_df = pd.DataFrame(results)
@@ -136,11 +149,48 @@ plt.show()
 output_path = "/home/chris/experiment_data/5_09.01.25-15.01.25/preprocessed/P3_ready_to_train.csv"
 final_df.to_csv(output_path, index=False)
 
+# Plot annotation validation with two subplots
+fig, axes = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+
+# Plot blocks in final_df
+# Plot blocks in final_df
+for heat, color in [(1, 'red'), (0, 'blue')]:
+    heat_data = final_df[final_df['Heat'] == heat]
+    for _, row in heat_data.iterrows():
+        # Plot the block
+        axes[0].plot([row['Start_Datetime'], row['End_Datetime']], [row['Heat'], row['Heat']], color=color, linewidth=2)
+        # Add a short vertical line at the end of the block aligned with the y-axis
+        axes[0].vlines(
+            x=row['End_Datetime'],
+            ymin=row['Heat'] - 0.01,  # Short line centered on the block
+            ymax=row['Heat'] + 0.01,
+            color='black',
+            linestyle='--',
+            linewidth=0.5
+        )
+axes[0].set_title('Heat Blocks in final_df')
+axes[0].set_ylabel('Heat')
+axes[0].legend(["Heat 1", "Heat 0"], loc='upper right')
+axes[0].grid()
+
+# Plot preprocessed temperatures with phases
+for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
+    phase_data = merged_data[merged_data['phase'] == phase]
+    axes[1].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
+axes[1].set_title('Preprocessed Temperatures with Phases')
+axes[1].set_ylabel('Temperature (°C)')
+axes[1].legend(loc='upper right')
+axes[1].grid()
+
+plt.xlabel('Datetime')
+plt.tight_layout()
+plt.show()
+
 
 
 
 # Select a few random slices to plot
-slices_to_plot = final_df[0:5] # Change n to plot more or fewer slices
+slices_to_plot = final_df.sample(n=5) # Randomly select 5 slices
 
 # Plot each slice
 fig, axes = plt.subplots(len(slices_to_plot), 1, figsize=(12, len(slices_to_plot) * 3))

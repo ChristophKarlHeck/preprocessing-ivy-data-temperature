@@ -11,7 +11,9 @@ python3 annotating.py --data_dir "/home/chris/experiment_data/5_09.01.25-15.01.2
 ```
 
 ## 3. Splitting to final document
-
+```bash
+python3 splitting.py --data_dir "/home/chris/experiment_data/5_09.01.25-15.01.25" --split_minutes 10 --prefix "P3"
+```
 
 ## Utils
 Only for exceptions

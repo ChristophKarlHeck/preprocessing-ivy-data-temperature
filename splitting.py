@@ -70,9 +70,13 @@ plt.show()
 # Process data for writing the new file
 
 merged_data['Heat'] = merged_data['phase'].apply(lambda x: 1 if x in ['Increasing', 'Holding'] else 0)
+merged_data['Phase_Numbers'] = merged_data['phase'].map({'Nothing': 0, 'Decreasing': 1, 'Holding': 2, 'Increasing': 3})
 
 # Add a group identifier based on changes in the Heat column
 merged_data['heat_group'] = (merged_data['Heat'].diff() != 0).cumsum()
+
+# Add a group identifier based on changes in the Heat column
+merged_data['phase_group'] = (merged_data['Phase_Numbers'].diff() != 0).cumsum()
 
 # Plot annotation validation with two subplots
 fig, axes = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
@@ -103,8 +107,6 @@ plt.xlabel('Datetime')
 plt.tight_layout()
 plt.show()
 
-
-
 # Extract 10-minute slices based on continuous datetime groups
 results = []
 for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
@@ -116,13 +118,13 @@ for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
                 (group_data['datetime'] >= current_time) &
                 (group_data['datetime'] < current_time + pd.Timedelta(minutes=10))
             ]
-            if len(slice_data) == 600:# and slice_data['Heat'].nunique() == 1:
+            if len(slice_data) == 600 and slice_data['Heat'].nunique() == 1:
                 row = {
                     'Start_Datetime': slice_data['datetime'].iloc[0],
                     'End_Datetime': slice_data['datetime'].iloc[-1],
                     'Plant': plants.iloc[0]['P3'],
                     'Channel': 1 if channel == 'CH1_milli_volt' else 2,
-                    'Phase': phase,
+                    'Phase': group_data['phase'].iloc[0],
                     'Heat': slice_data['Heat'].iloc[0]
                 }
                 row.update({f'val{i+1}': slice_data[channel].iloc[i] for i in range(600)})
@@ -153,7 +155,6 @@ final_df.to_csv(output_path, index=False)
 # Plot annotation validation with two subplots
 fig, axes = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
 
-# Plot blocks in final_df
 # Plot blocks in final_df
 for heat, color in [(1, 'red'), (0, 'blue')]:
     heat_data = final_df[final_df['Heat'] == heat]
@@ -186,9 +187,6 @@ axes[1].grid()
 plt.xlabel('Datetime')
 plt.tight_layout()
 plt.show()
-
-
-
 
 # Select a few random slices to plot
 slices_to_plot = final_df.sample(n=5) # Randomly select 5 slices

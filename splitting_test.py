@@ -4,20 +4,20 @@ import argparse
 import os
 
 # Function to process data and create outputs
-def process_data(data_dir, split_minutes):
+def process_data(data_dir, split_minutes, prefix):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    p3_preprocessed_path = os.path.join(data_dir, "preprocessed/P3_preprocessed.csv")
+    preprocessed_path = os.path.join(data_dir, f"preprocessed/{prefix}_preprocessed.csv")
     plants_path = os.path.join(data_dir, "plants.csv")
 
     # Load data
     temp_annotated = pd.read_csv(temp_annotated_path, parse_dates=['datetime'])
-    p3_preprocessed = pd.read_csv(p3_preprocessed_path, parse_dates=['datetime'])
+    preprocessed = pd.read_csv(preprocessed_path, parse_dates=['datetime'])
     plants = pd.read_csv(plants_path)
 
-    # Merge temp_annotated with P3_Preprocessed
+    # Merge temp_annotated with prefix_Preprocessed
     merged_data = pd.merge_asof(
-        p3_preprocessed.sort_values('datetime'),
+        preprocessed.sort_values('datetime'),
         temp_annotated.sort_values('datetime'),
         on='datetime',
         direction='nearest'
@@ -29,7 +29,7 @@ def process_data(data_dir, split_minutes):
     # Plot the dataset counts for each phase
     plt.figure(figsize=(10, 6))
     ax = phase_counts.plot(kind='bar', color=['grey', 'red', 'purple', 'green'])
-    plt.title("Number of Datasets per Phase")
+    plt.title(f"Number of Datasets per Phase from {prefix}")
     plt.xlabel("Phase")
     plt.ylabel("Number of Datasets")
     plt.xticks(rotation=45)
@@ -46,14 +46,14 @@ def process_data(data_dir, split_minutes):
 
     # Plot CH1
     axes[0].plot(merged_data['datetime'], merged_data['CH1_milli_volt'], color='black', label='CH1')
-    axes[0].set_title('CH1 of P3')
+    axes[0].set_title(f'CH1 of {prefix}')
     axes[0].set_ylabel('CH1')
     axes[0].grid()
     axes[0].legend()
 
     # Plot CH2
     axes[1].plot(merged_data['datetime'], merged_data['CH2_milli_volt'], color='black', label='CH2')
-    axes[1].set_title('CH2 of P3')
+    axes[1].set_title(f'CH2 of {prefix}')
     axes[1].set_ylabel('CH2')
     axes[1].grid()
     axes[1].legend()
@@ -94,7 +94,7 @@ def process_data(data_dir, split_minutes):
                     row = {
                         'Start_Datetime': slice_data['datetime'].iloc[0],
                         'End_Datetime': slice_data['datetime'].iloc[-1],
-                        'Plant': plants.iloc[0]['P3'],
+                        'Plant': plants.iloc[0][f'{prefix}'],
                         'Channel': 1 if channel == 'CH1_milli_volt' else 2,
                         'Phase': group_data['phase'].iloc[0],
                         'Heat': slice_data['Heat'].iloc[0]
@@ -120,14 +120,6 @@ def process_data(data_dir, split_minutes):
     plt.xticks(rotation=45)
     plt.grid(axis='y')
     plt.show()
-
-    print(f"Total Heat = 1 blocks in final_df: {len(final_df[final_df['Heat'] == 1])}")
-    print(f"Unique Heat = 1 blocks: {final_df[final_df['Heat'] == 1].drop_duplicates().shape[0]}")
-    heat_data = final_df[final_df['Heat'] == 1]
-    print(f"Blocks plotted: {len(heat_data)}")
-
-
-
 
     # Plot annotation validation with three subplots (CH1, CH2, and Temperature)
     fig, axes = plt.subplots(3, 1, figsize=(15, 15), sharex=True)
@@ -185,17 +177,42 @@ def process_data(data_dir, split_minutes):
     plt.tight_layout()
     plt.show()
 
+    # Select a few random slices to plot
+    slices_to_plot = final_df.sample(n=5) # Randomly select 5 slices
+
+    # Plot each slice
+    fig, axes = plt.subplots(len(slices_to_plot), 1, figsize=(12, len(slices_to_plot) * 3))
+
+    for i, (_, slice_row) in enumerate(slices_to_plot.iterrows()):
+        # Extract the channel data for this slice
+        channel_data = [slice_row[f'val{j+1}'] for j in range(600)]
+        
+        # Plot the slice
+        axes[i].plot(channel_data, label=f"Plant: {slice_row['Plant']}, Channel: {slice_row['Channel']}, Phase: {slice_row['Phase']}, Heat: {slice_row['Heat']}")
+        axes[i].set_title(f"Slice {i + 1}")
+        axes[i].set_xlabel("Time (seconds)")
+        axes[i].set_ylabel("Milli-volt")
+        axes[i].legend()
+        axes[i].grid()
+
+    plt.tight_layout()
+    plt.show()
+
     # Save output
-    output_path = os.path.join(data_dir, "preprocessed/P3_ready_to_train.csv")
+    ready_for_training_dir = os.path.join(data_dir, "training_data")
+    os.makedirs(ready_for_training_dir, exist_ok=True)
+    output_path = os.path.join(os.path.join(ready_for_training_dir, f"{prefix}_ready_to_train.csv"))
     final_df.to_csv(output_path, index=False)
 
     print(f"Processed data saved to {output_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process P3 data for training.")
+    parser = argparse.ArgumentParser(description="Process phyto node data for training.")
     parser.add_argument("--data_dir", type=str, required=True, help="Path to the data directory.")
     parser.add_argument("--split_minutes", type=int, default=10, help="Time slice length in minutes.")
+    parser.add_argument("--prefix", type=str, required=True, help="Prefix for the dataset (e.g., P3, P5).")
+    args = parser.parse_args()
     
     args = parser.parse_args()
 
-    process_data(args.data_dir, args.split_minutes)
+    process_data(args.data_dir, args.split_minutes, args.prefix)

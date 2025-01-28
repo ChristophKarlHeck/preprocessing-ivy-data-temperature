@@ -24,26 +24,31 @@ phase_counts = merged_data['phase'].value_counts()
 
 # Plot the dataset counts for each phase
 plt.figure(figsize=(10, 6))
-phase_counts.plot(kind='bar', color=['green', 'red', 'purple', 'grey'])
+ax = phase_counts.plot(kind='bar', color=['grey', 'red', 'purple', 'green'])
 plt.title("Number of Datasets per Phase")
 plt.xlabel("Phase")
 plt.ylabel("Number of Datasets")
 plt.xticks(rotation=45)
 plt.grid(axis='y')
+
+# Add numbers on top of bars
+for i, count in enumerate(phase_counts):
+    ax.text(i, count + 0.02 * max(phase_counts), str(count), ha='center', fontsize=10)
+
 plt.show()
 
 # Plot the three subplots
 fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
 
 # Plot CH1
-axes[0].plot(merged_data['datetime'], merged_data['CH1_milli_volt'], color='blue', label='CH1')
+axes[0].plot(merged_data['datetime'], merged_data['CH1_milli_volt'], color='black', label='CH1')
 axes[0].set_title('CH1 of P3')
 axes[0].set_ylabel('CH1')
 axes[0].grid()
 axes[0].legend()
 
 # Plot CH2
-axes[1].plot(merged_data['datetime'], merged_data['CH2_milli_volt'], color='green', label='CH2')
+axes[1].plot(merged_data['datetime'], merged_data['CH2_milli_volt'], color='black', label='CH2')
 axes[1].set_title('CH2 of P3')
 axes[1].set_ylabel('CH2')
 axes[1].grid()
@@ -64,30 +69,28 @@ plt.show()
 
 # Process data for writing the new file
 
-# Create a column to identify continuous datetime blocks
-merged_data['time_diff'] = merged_data['datetime'].diff().gt(pd.Timedelta(seconds=1))
-merged_data['group'] = merged_data['time_diff'].cumsum()
-
-
-# Drop the auxiliary column as it's no longer needed
-merged_data.drop(columns=['time_diff'], inplace=True)
-
 merged_data['Heat'] = merged_data['phase'].apply(lambda x: 1 if x in ['Increasing', 'Holding'] else 0)
 
-# Plot the three subplots
-# Plot the two subplots
-fig, axes = plt.subplots(2, 1, figsize=(15, 12), sharex=True)
+# Add a group identifier based on changes in the Heat column
+merged_data['heat_group'] = (merged_data['Heat'].diff() != 0).cumsum()
 
-# First subplot: Heat annotation
+# Plot annotation validation with two subplots
+fig, axes = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+
+# Plot blocks in merged_data
 for heat, color in [(1, 'red'), (0, 'blue')]:
     heat_data = merged_data[merged_data['Heat'] == heat]
-    axes[0].scatter(heat_data['datetime'], heat_data['Heat'], color=color, label=f'Heat {heat}', s=10)
-axes[0].set_title('Heat Annotation in merged_data')
+    for _, group_data in heat_data.groupby('heat_group'):
+        axes[0].plot(group_data['datetime'], [heat] * len(group_data), color=color, linewidth=2)
+axes[0].set_title('Heat Annotation with Consecutive Groups')
 axes[0].set_ylabel('Heat')
-axes[0].legend()
+axes[0].legend(handles=[
+    plt.Line2D([0], [0], color='red', linewidth=2, label='Heat 1'),
+    plt.Line2D([0], [0], color='blue', linewidth=2, label='Heat 0')
+], loc='upper right')
 axes[0].grid()
 
-# Second subplot: Preprocessed temperatures with phases
+# Plot preprocessed temperatures with phases
 for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
     phase_data = merged_data[merged_data['phase'] == phase]
     axes[1].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
@@ -101,16 +104,17 @@ plt.tight_layout()
 plt.show()
 
 
+
 # Extract 10-minute slices based on continuous datetime groups
 results = []
 for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
-    for (phase, group), phase_data in merged_data.groupby(['Heat', 'group']):
-        current_time = phase_data['datetime'].min()
-        end_time = phase_data['datetime'].max()
+    for group, group_data in merged_data.groupby(['heat_group']):
+        current_time = group_data['datetime'].min()
+        end_time = group_data['datetime'].max()
         while current_time + pd.Timedelta(minutes=10) <= end_time:
-            slice_data = phase_data[
-                (phase_data['datetime'] >= current_time) &
-                (phase_data['datetime'] < current_time + pd.Timedelta(minutes=10))
+            slice_data = group_data[
+                (group_data['datetime'] >= current_time) &
+                (group_data['datetime'] < current_time + pd.Timedelta(minutes=10))
             ]
             if len(slice_data) == 600:# and slice_data['Heat'].nunique() == 1:
                 row = {
@@ -127,9 +131,6 @@ for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
 
 # Create the final DataFrame and save to CSV
 final_df = pd.DataFrame(results)
-
-# Filter out 'Decreasing' phase
-final_df = final_df[final_df['Phase'] != 'Decreasing']
 
 # Balance the dataset
 heat_1 = final_df[final_df['Heat'] == 1]

@@ -55,15 +55,15 @@ def process_data(data_dir, split_minutes, prefix):
     # Plot data visualization (CH1, CH2, and Temperature with phases)
     fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
 
-    axes[0].plot(merged_data['datetime'], merged_data['CH1_milli_volt'], color='black', label='CH1')
+    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed_scaled'], color='black', label='CH1')
     axes[0].set_title(f'CH1 of {prefix}')
-    axes[0].set_ylabel('CH1 (mV)')
+    axes[0].set_ylabel('Preprocessed Data')
     axes[0].grid()
     axes[0].legend()
 
-    axes[1].plot(merged_data['datetime'], merged_data['CH2_milli_volt'], color='black', label='CH2')
+    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed_scaled'], color='black', label='CH2')
     axes[1].set_title(f'CH2 of {prefix}')
-    axes[1].set_ylabel('CH2 (mV)')
+    axes[1].set_ylabel('Preprocessed Data')
     axes[1].grid()
     axes[1].legend()
 
@@ -90,7 +90,7 @@ def process_data(data_dir, split_minutes, prefix):
 
     # Generate time-sliced data
     results = []
-    for channel in ['CH1_milli_volt', 'CH2_milli_volt']:
+    for channel in ['CH1_smoothed_scaled', 'CH2_smoothed_scaled']:
         for group, group_data in merged_data.groupby(['heat_group']):
             current_time = group_data['datetime'].min()
             end_time = group_data['datetime'].max()
@@ -104,7 +104,7 @@ def process_data(data_dir, split_minutes, prefix):
                         'Start_Datetime': slice_data['datetime'].iloc[0],
                         'End_Datetime': slice_data['datetime'].iloc[-1],
                         'Plant': plants.iloc[0][f'{prefix}'],
-                        'Channel': 1 if channel == 'CH1_milli_volt' else 2,
+                        'Channel': 1 if channel == 'CH1_smoothed_scaled' else 2,
                         'Phase': group_data['phase'].iloc[0],
                         'Heat': slice_data['Heat'].iloc[0]
                     }
@@ -115,7 +115,7 @@ def process_data(data_dir, split_minutes, prefix):
     # Create and balance the final DataFrame
     final_df = pd.DataFrame(results)
 
-    heat_1 = final_df[final_df['Heat'] == 1]
+    heat_1 = final_df[final_df['Heat'] == 1] # upsampling possible --> smote function in case we need more data
     heat_0 = final_df[final_df['Heat'] == 0].sample(n=len(heat_1), random_state=42)
     final_df = pd.concat([heat_1, heat_0]).sample(frac=1, random_state=42).reset_index(drop=True)
 
@@ -200,7 +200,7 @@ def process_data(data_dir, split_minutes, prefix):
         axes[i].plot(channel_data, label=f"Plant: {slice_row['Plant']}, Channel: {slice_row['Channel']}, Phase: {slice_row['Phase']}, Heat: {slice_row['Heat']}")
         axes[i].set_title(f"Slice {i + 1}")
         axes[i].set_xlabel("Time (seconds)")
-        axes[i].set_ylabel("Milli-volt")
+        axes[i].set_ylabel("Scaled")
         axes[i].legend()
         axes[i].grid()
 

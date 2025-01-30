@@ -213,8 +213,7 @@ def process_data(data_dir, split_minutes, prefix):
     output_dir = os.path.join(data_dir, "training_data")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
-    final_df.drop(columns=['Start_Datetime', 'End_Datetime'], inplace=True)
-    print(final_df)
+    #final_df.drop(columns=['Start_Datetime', 'End_Datetime'], inplace=True)
     final_df.to_csv(output_path, index=False)
 
     print(f"Processed data saved to {output_path}")

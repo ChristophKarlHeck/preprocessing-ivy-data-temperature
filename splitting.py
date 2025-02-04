@@ -36,18 +36,18 @@ def process_data(data_dir, split_minutes, prefix):
         direction='nearest'
     )
 
-    color_map = {
+    color_map_phases = {
     'Nothing': 'grey',
     'Decreasing': 'red',
     'Increasing': 'green',
     'Holding': 'purple'
-}
+    }
 
     # Count and visualize datasets per phase
     phase_counts = merged_data['phase'].value_counts()
 
     plt.figure(figsize=(10, 6))
-    ax = phase_counts.plot(kind='bar', color=[color_map[name] for name in phase_counts.index])
+    ax = phase_counts.plot(kind='bar', color=[color_map_phases[name] for name in phase_counts.index])
     plt.title(f"Number of Datasets per Phase from {prefix}")
     plt.xlabel("Phase")
     plt.ylabel("Number of Datasets")
@@ -126,10 +126,15 @@ def process_data(data_dir, split_minutes, prefix):
     heat_0 = final_df[final_df['Heat'] == 0].sample(n=len(heat_1), random_state=42)
     final_df = pd.concat([heat_1, heat_0]).sample(frac=1, random_state=42).reset_index(drop=True)
 
+    color_map_classification = {
+        1: 'orange',
+        0: 'blue'
+    } 
+
     # Visualize balanced dataset
     heat_counts = final_df['Heat'].value_counts()
     plt.figure(figsize=(10, 6))
-    heat_counts.plot(kind='bar', color=['orange', 'blue'])
+    heat_counts.plot(kind='bar', color=[color_map_classification[value] for value in heat_counts.index])
     plt.title("Balanced Datasets")
     plt.xlabel("Heat")
     plt.ylabel("Number of Datasets for both Channels")

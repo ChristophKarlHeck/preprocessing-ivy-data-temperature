@@ -16,7 +16,8 @@ CONFIG = {
     "temperature_deviation_holding": 0.5,   # 0.5 °C
     "time_window_holding": 60,              # 1h
     "min_block_size_normalization": 600,    # 10 min
-    "minimum_distance_between_peaks": 5400  # 1.5h
+    "minimum_distance_between_peaks": 5400,  # 1.5h
+    "number_of_peaks": 5
 }
 
 def discover_files(data_dir: str, prefix: str) -> list[str]:
@@ -65,7 +66,7 @@ def label_holding_areas(data):
     )
 
     # Extract the 5 highest peaks from the identified peaks
-    highest_peaks_indices = data.iloc[peaks_indices]['rolling_mean'].nlargest(5).index
+    highest_peaks_indices = data.iloc[peaks_indices]['rolling_mean'].nlargest(CONFIG["number_of_peaks"]).index
 
     # Extend the holding area to include 60 minutes before and after each peak if within -1.5°C of the peak value
     for peak_index in highest_peaks_indices:
@@ -76,7 +77,7 @@ def label_holding_areas(data):
         start_time = peak_time - timedelta(minutes=CONFIG["time_window_holding"])
         end_time = peak_time + timedelta(minutes=CONFIG["time_window_holding"])
 
-        # Mark points as "Holding" if within the time range and within -1.5°C of the peak value
+        # Mark points as "Holding" if within the time range and within *°C of the peak value
         holding_indices = data.index[
             (data['datetime'] >= start_time) &
             (data['datetime'] <= end_time) &
@@ -120,7 +121,7 @@ def normalize_blocks(data):
 def plot_smoothed_data(data, highest_peaks_indices, day):
     # Plot the rolling mean with normalized heavy slope regions highlighted
     plt.figure(figsize=(15, 6))
-    plt.plot(data['datetime'], data['rolling_mean'], color='orange', label="Rolling Mean (Window Size = 1200)", linewidth=1.5)
+    plt.plot(data['datetime'], data['rolling_mean'], color='orange', label=f"Rolling Mean (Window Size = {CONFIG['window_length']})", linewidth=1.5)
 
     # Highlight normalized heavy slope categories
     for slope_category, color, label in [('Increasing', 'green', 'Increasing'),
@@ -132,7 +133,7 @@ def plot_smoothed_data(data, highest_peaks_indices, day):
 
     # Highlight the top 5 peaks
     plt.scatter(data['datetime'][highest_peaks_indices], data['rolling_mean'][highest_peaks_indices], 
-                color='blue', label='Top 5 Peaks', s=100, marker='x', zorder=5)
+                color='blue', label=f'Top {CONFIG["number_of_peaks"]} Peaks', s=100, marker='x', zorder=5)
 
     plt.title(f"Rolling Mean with Normalized Heavy Slopes ({day})")
     plt.xlabel("Datetime")

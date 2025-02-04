@@ -36,11 +36,18 @@ def process_data(data_dir, split_minutes, prefix):
         direction='nearest'
     )
 
+    color_map = {
+    'Nothing': 'grey',
+    'Decreasing': 'red',
+    'Increasing': 'green',
+    'Holding': 'purple'
+}
+
     # Count and visualize datasets per phase
     phase_counts = merged_data['phase'].value_counts()
 
     plt.figure(figsize=(10, 6))
-    ax = phase_counts.plot(kind='bar', color=['grey', 'red', 'purple', 'green'])
+    ax = phase_counts.plot(kind='bar', color=[color_map[name] for name in phase_counts.index])
     plt.title(f"Number of Datasets per Phase from {prefix}")
     plt.xlabel("Phase")
     plt.ylabel("Number of Datasets")
@@ -122,7 +129,7 @@ def process_data(data_dir, split_minutes, prefix):
     # Visualize balanced dataset
     heat_counts = final_df['Heat'].value_counts()
     plt.figure(figsize=(10, 6))
-    heat_counts.plot(kind='bar', color=['blue', 'red'])
+    heat_counts.plot(kind='bar', color=['orange', 'blue'])
     plt.title("Balanced Datasets")
     plt.xlabel("Heat")
     plt.ylabel("Number of Datasets for both Channels")
@@ -134,7 +141,7 @@ def process_data(data_dir, split_minutes, prefix):
     fig, axes = plt.subplots(3, 1, figsize=(15, 15), sharex=True)
 
     # Plot CH1 blocks in final_df
-    for heat, color in [(1, 'red'), (0, 'blue')]:
+    for heat, color in [(1, 'orange'), (0, 'blue')]:
         heat_data = final_df[(final_df['Heat'] == heat) & (final_df['Channel'] == 1)]  # Filter for CH1
         for _, row in heat_data.iterrows():
             # Plot the block
@@ -154,7 +161,7 @@ def process_data(data_dir, split_minutes, prefix):
     axes[0].grid()
 
     # Plot CH2 blocks in final_df
-    for heat, color in [(1, 'red'), (0, 'blue')]:
+    for heat, color in [(1, 'orange'), (0, 'blue')]:
         heat_data = final_df[(final_df['Heat'] == heat) & (final_df['Channel'] == 2)]  # Filter for CH2
         for _, row in heat_data.iterrows():
             # Plot the block

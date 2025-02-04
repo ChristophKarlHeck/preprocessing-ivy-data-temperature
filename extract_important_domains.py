@@ -205,11 +205,13 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     # Plot CH1
     for heat, color in zip([0, 1], ['blue', 'orange']):
         subset = df_results[(df_results['Channel'] == 0) & (df_results['Heat'] == heat)]
+        first_entry = True
         for _, row in subset.iterrows():
-            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)  # Adjust for metadata columns
+            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)
             values = row[[col for col in row.index if col.startswith('val_')]].values
-            axes[0].plot(time_range, values, color=color, alpha=0.5, label=f'CH0 Heat {heat}' if _ == 0 else "")
-    axes[0].set_title('CH1 Signal')
+            axes[0].plot(time_range, values, color=color, alpha=0.5, label=f'CH0 Heat {heat}' if first_entry else "")
+            first_entry = False
+    axes[0].set_title('CH0 Signal')
     axes[0].set_ylabel('Preprocessed Data')
     axes[0].grid()
     axes[0].legend()
@@ -217,11 +219,13 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     # Plot CH2
     for heat, color in zip([0, 1], ['blue', 'orange']):
         subset = df_results[(df_results['Channel'] == 1) & (df_results['Heat'] == heat)]
+        first_entry = True
         for _, row in subset.iterrows():
-            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)  # Adjust for metadata columns
+            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)
             values = row[[col for col in row.index if col.startswith('val_')]].values
-            axes[1].plot(time_range, values, color=color, alpha=0.5, label=f'CH1 Heat {heat}' if _ == 0 else "")
-    axes[1].set_title('CH2 Signal')
+            axes[1].plot(time_range, values, color=color, alpha=0.5, label=f'CH1 Heat {heat}' if first_entry else "")
+            first_entry = False
+    axes[1].set_title('CH1 Signal')
     axes[1].set_ylabel('Preprocessed Data')
     axes[1].grid()
     axes[1].legend()

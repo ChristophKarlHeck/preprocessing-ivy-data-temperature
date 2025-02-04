@@ -186,7 +186,7 @@ def main():
     console.print(f"[bold cyan]Prefix:[/bold cyan] {prefix}")
     console.print(f"[bold green]Data Directory:[/bold green] {data_dir}")
     console.print(f"[bold yellow]From:[/bold yellow] {from_date}")
-    console.print(f"[bold yellow]Until:[/bold yellow] {from_date}")
+    console.print(f"[bold yellow]Until:[/bold yellow] {until_date}")
 
     # Process Phyto Node 
     phyto_files = discover_files(data_dir, prefix)

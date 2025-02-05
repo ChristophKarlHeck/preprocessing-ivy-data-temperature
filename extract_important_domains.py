@@ -46,7 +46,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     temp_annotated["prev_phase"] = temp_annotated["phase"].shift(1)
     distinct_increasing_starts = (temp_annotated[
         (temp_annotated["phase"] == "Increasing") & (temp_annotated["prev_phase"] != "Increasing")
-    ]['datetime'] + pd.Timedelta(minutes=2)).tolist()
+    ]['datetime'] + pd.Timedelta(minutes=0)).tolist()
     
     # Merge datasets using nearest datetime to match the preprocessed data with annotations
     merged_data = pd.merge_asof(

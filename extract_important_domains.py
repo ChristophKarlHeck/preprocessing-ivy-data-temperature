@@ -39,6 +39,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     
     # Load data
     temp_annotated = pd.read_csv(temp_annotated_path, parse_dates=['datetime'])
+    # temp_annotated = temp_annotated[temp_annotated["datetime"] < "2025-02-08"]
     preprocessed = pd.read_csv(preprocessed_path, parse_dates=['datetime'])
     plants = pd.read_csv(plants_path)
     

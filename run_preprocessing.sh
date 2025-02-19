@@ -21,4 +21,4 @@ python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/7_20
 python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --from_date 2025-01-25 --until_date 2025-01-30
 
 python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --from_date 2025-02-01 --until_date 2025-02-10
-python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --from_date 2025-02-01 --until_date 2025-02-10
+python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --from_date 2025-02-01 --until_date 2025-02-07 # uncomment dat cut

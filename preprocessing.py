@@ -22,8 +22,8 @@ CONFIG = {
     "GAIN": 4.0,
     "WINDOW_SIZE": 5,
     "RESAMPLE_RATE": "1s",
-    "MIN_VALUE": -200,
-    "MAX_VALUE": 200,
+    "MIN_VALUE": -20,
+    "MAX_VALUE": 20,
 }
 
 # Initialize the console
@@ -81,6 +81,11 @@ def preprocess_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.Dat
         pd.DataFrame: Preprocessed DataFrame.
     """
     console.print("[bold yellow]Preprocessing data: filtering and resampling...[/bold yellow]")
+
+    # Add dates to CONFIG
+    CONFIG["FROM_DATE"] = from_date
+    CONFIG["UNTIL_DATE"] = until_date
+    
     df = df.dropna(subset=["datetime"])
     df.set_index("datetime", inplace=True)
     df = df[df.index >= from_date]

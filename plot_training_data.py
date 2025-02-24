@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import json
+from matplotlib.colors import LinearSegmentedColormap
 
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
@@ -33,52 +34,52 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     )
 
     # Create subplots for CH1, CH2, and temperature with phases
-    fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
+    # fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
     
-    # Plot CH1
-    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed_scaled'], color='black', label='CH1')
-    axes[0].set_title('CH1 Signal')
-    axes[0].set_ylabel('Preprocessed Data')
-    axes[0].grid()
-    axes[0].legend()
+    # # Plot CH1
+    # axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed_scaled'], color='black', label='CH1')
+    # axes[0].set_title('CH1 Signal')
+    # axes[0].set_ylabel('Preprocessed Data')
+    # axes[0].grid()
+    # axes[0].legend()
     
-    # Plot CH2
-    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed_scaled'], color='black', label='CH2')
-    axes[1].set_title('CH2 Signal')
-    axes[1].set_ylabel('Preprocessed Data')
-    axes[1].grid()
-    axes[1].legend()
+    # # Plot CH2
+    # axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed_scaled'], color='black', label='CH2')
+    # axes[1].set_title('CH2 Signal')
+    # axes[1].set_ylabel('Preprocessed Data')
+    # axes[1].grid()
+    # axes[1].legend()
     
-    # Plot Temperature with Phase Colors
-    for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
-        phase_data = merged_data[merged_data['phase'] == phase]
-        axes[2].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
+    # # Plot Temperature with Phase Colors
+    # for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
+    #     phase_data = merged_data[merged_data['phase'] == phase]
+    #     axes[2].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
     
-    axes[2].set_title('Temperature with Phases')
-    axes[2].set_ylabel('Temperature (°C)')
-    axes[2].grid()
-    axes[2].legend(loc='upper right')
+    # axes[2].set_title('Temperature with Phases')
+    # axes[2].set_ylabel('Temperature (°C)')
+    # axes[2].grid()
+    # axes[2].legend(loc='upper right')
     
-    # Plot vertical lines and highlight domain for distinct increasing phase starts
-    for i, ax in enumerate(axes):
-        for j, start_time in enumerate(distinct_increasing_starts):
-            label = "Start of Increasing" if j == 0 else None
-            ax.axvline(start_time, color='blue', linestyle='--', linewidth=1.5, label=label)
+    # # Plot vertical lines and highlight domain for distinct increasing phase starts
+    # for i, ax in enumerate(axes):
+    #     for j, start_time in enumerate(distinct_increasing_starts):
+    #         label = "Start of Increasing" if j == 0 else None
+    #         ax.axvline(start_time, color='blue', linestyle='--', linewidth=1.5, label=label)
             
-            # Highlighting domain (before and after)
-            ax.axvspan(start_time - pd.Timedelta(minutes=before), start_time + pd.Timedelta(minutes=after), 
-                       color='blue', alpha=0.2)
+    #         # Highlighting domain (before and after)
+    #         ax.axvspan(start_time - pd.Timedelta(minutes=before), start_time + pd.Timedelta(minutes=after), 
+    #                    color='blue', alpha=0.2)
     
-    # Add legend only once per plot
-    axes[0].legend(loc='upper right')
-    axes[1].legend(loc='upper right')
-    axes[2].legend(loc='upper right')
+    # # Add legend only once per plot
+    # axes[0].legend(loc='upper right')
+    # axes[1].legend(loc='upper right')
+    # axes[2].legend(loc='upper right')
     
-    plt.xlabel('Datetime')
-    plt.tight_layout()
+    # plt.xlabel('Datetime')
+    # plt.tight_layout()
     
-    # Display the plot
-    plt.show()
+    # # Display the plot
+    # plt.show()
 
     # Extract 60-minute segments around each increasing start
     time_window_before = pd.Timedelta(minutes=before)
@@ -92,6 +93,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
         segments_ch2.append(segment['CH2_smoothed_scaled'].values)
         segments_datetime.append(segment['datetime'].values)
 
+    print(len(segments_ch1))
     results = []
     num_slices = int((before+after)/split_minutes)  # Each segment is split into 6 slices (10 min each)
     samples_per_slice = int(((before+after)*60)/num_slices) # 10 minutes at 1Hz sampling
@@ -144,33 +146,88 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
     print(f"Processed slices stored in {output_path}")
 
-    # Convert to NumPy arrays for processing
+    #Convert to NumPy arrays for processing
     segments_ch1 = np.array(segments_ch1)
     segments_ch2 = np.array(segments_ch2)
 
-    # Compute mean and standard deviation
-    mean_ch1, std_ch1 = np.nanmean(segments_ch1, axis=0), np.nanstd(segments_ch1, axis=0)
-    mean_ch2, std_ch2 = np.nanmean(segments_ch2, axis=0), np.nanstd(segments_ch2, axis=0)
-    
-    # Time axis for plotting
+    mean_signal = np.mean(segments_ch1, axis=0)
+    std_signal = np.std(segments_ch1, axis=0)
+
+    # Create a time axis
     time_axis = np.linspace(-before, after, segments_ch1.shape[1])
-    
-    # Plot mean and standard deviation as shaded regions
+
+    # Plot mean signal with shaded standard deviation
     plt.figure(figsize=(10, 6))
-    plt.plot(time_axis, mean_ch1, color='black', label='CH1 Mean')
-    plt.fill_between(time_axis, mean_ch1 - std_ch1, mean_ch1 + std_ch1, color='black', alpha=0.2)
-    
-    plt.plot(time_axis, mean_ch2, color='red', label='CH2 Mean')
-    plt.fill_between(time_axis, mean_ch2 - std_ch2, mean_ch2 + std_ch2, color='red', alpha=0.2)
-    
+    plt.plot(time_axis, mean_signal, color='black', label='Mean Signal')
+    plt.fill_between(time_axis, mean_signal - std_signal, mean_signal + std_signal, color='red', alpha=0.2)
+
     plt.axvline(0, color='blue', linestyle='--', label='Start of Increasing')
     plt.xlabel("Time (minutes relative to Increasing start)")
-    plt.ylabel("Signal Intensity")
-    plt.title("CH1 and CH2 Response Around Increasing Phase Start")
+    plt.ylabel("Scaled Electrical Potential")
+    plt.title("Overlayed Mean CH1 Signal with Variability")
     plt.legend()
-    plt.grid()
     plt.show()
 
+    plt.figure(figsize=(10, 6))
+
+    for segment in segments_ch1:
+        plt.plot(time_axis, segment, color='red', alpha=0.1)  # Transparent lines
+
+    plt.axvline(0, color='blue', linestyle='--', label='Start of Increasing')
+    plt.xlabel("Time (minutes relative to Increasing start)")
+    plt.ylabel("Scaled Electrical Potential")
+    plt.title("Overlay of All CH1 Trials")
+    plt.show()
+
+    import seaborn as sns
+
+    plt.figure(figsize=(10, 6))
+    sns.kdeplot(segments_ch1.flatten(), bw_adjust=0.5, fill=True, color="red")
+
+    plt.xlabel("Signal Intensity")
+    plt.ylabel("Density")
+    plt.title("Density Distribution of CH1 Segments")
+    plt.show()
+
+    from scipy.ndimage import gaussian_filter
+
+    #Compute the mean response across all segments (axis=0 means average over trials)
+    mean_signal = np.mean(segments_ch1, axis=0)
+
+    # Compute the standard deviation to show variability
+    std_signal = np.std(segments_ch1, axis=0)
+
+    # Apply absolute values for intensity scaling
+    intensity_data = np.abs(segments_ch1)
+
+    # Sort segments by max intensity for better structure
+    sorted_indices = np.argsort(-np.max(intensity_data, axis=1))
+    sorted_data = intensity_data[sorted_indices, :]
+
+    # Smooth the data to reveal trends without excessive noise
+    smoothed_data = gaussian_filter(sorted_data, sigma=(1, 1))
+
+    # Create time axis
+    time_axis = np.linspace(-before, after, segments_ch1.shape[1])
+
+    # Plot heatmap
+    plt.figure(figsize=(12, 6))
+    im = plt.imshow(smoothed_data, aspect='auto', extent=[time_axis[0], time_axis[-1], 0, segments_ch1.shape[0]], 
+                    origin='lower', cmap='magma', vmin=0, vmax=np.percentile(intensity_data, 95)) 
+
+    plt.colorbar(label='Absolute Signal Intensity')
+    plt.xlabel("Time (minutes relative to Increasing start)")
+    plt.ylabel("Segment Index (Sorted by Max Intensity)")
+    plt.title("Optimized CH1 Heatmap with Enhanced Pattern Visibility")
+
+    # Overlay mean signal from the previous plot
+    plt.plot(time_axis, np.mean(sorted_data, axis=0), color="cyan", label="Mean Signal", linewidth=2)
+
+    # Vertical line at event start (time=0)
+    plt.axvline(0, color='blue', linestyle='--', linewidth=2, label="Start of Increasing")
+
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     # Load configuration from the JSON file

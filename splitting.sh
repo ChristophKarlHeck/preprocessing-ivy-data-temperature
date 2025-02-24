@@ -20,4 +20,4 @@ python3 extract_important_domains.py --data_dir /home/chris/experiment_data/7_20
 python3 extract_important_domains.py --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --prefix "P5" --before 30 --after 30 --split_minutes 10
 
 python3 extract_important_domains.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P5" --before 30 --after 30 --split_minutes 10
+python3 extract_important_domains.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P5" --before 30 --after 30 --split_minutes 10 # uncomment dat cut

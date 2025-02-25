@@ -189,20 +189,17 @@ def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None
 def main():
     # Argument parser
     parser = argparse.ArgumentParser(description="Preprocess CSV files.")
-    parser.add_argument("--prefix", required=True, help="Phyto node prefix (e.g., 'P5').")
     parser.add_argument("--data_dir", required=True, help="Directory with raw files.")
     parser.add_argument("--from_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
     parser.add_argument("--until_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data after that date.")
     args = parser.parse_args()
 
     # Normalize and validate inputs
-    prefix = args.prefix.upper()
     data_dir = args.data_dir.lower()
     from_date = validate_date(args.from_date)
     until_date = validate_date(args.until_date)
 
     # Print Input Parameters
-    console.print(f"[bold cyan]Prefix:[/bold cyan] {prefix}")
     console.print(f"[bold green]Data Directory:[/bold green] {data_dir}")
     console.print(f"[bold yellow]From:[/bold yellow] {from_date}")
     console.print(f"[bold yellow]Until:[/bold yellow] {until_date}")
@@ -256,8 +253,47 @@ def main():
     # Save and Plot
     preprocessed_dir = os.path.join(data_dir, "preprocessed")
     os.makedirs(preprocessed_dir, exist_ok=True)
-    save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    plot_data(df_classified, df_temp, prefix, threshold, preprocessed_dir)
+    save_config_to_txt(CONFIG, preprocessed_dir, "C1")
+    plot_data(df_classified, df_temp, "C1", threshold, preprocessed_dir)
+
+    # Calculate Arruracy
+    annotated_file = os.path.join(preprocessed_dir, "temp_annotated.csv")
+    df_annotated = pd.read_csv(annotated_file)
+    df_annotated["datetime"] = pd.to_datetime(df_annotated["datetime"], errors="coerce")
+    df_annotated = df_annotated.dropna(subset=["datetime"])
+
+    df_classified["datetime"] = df_classified["datetime"].dt.floor("s")
+    df_annotated["datetime"] = df_annotated["datetime"].dt.floor("s")
+
+
+    # Merge both DataFrames on "datetime" to ensure alignment
+    df_merged = df_classified.merge(df_annotated, on="datetime", how="inner")
+
+    # Define correct classification cases
+    correct_cases = (
+        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Increasing", "Holding"])) |
+        ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
+    )
+
+    # Count correct cases
+    correct_count = correct_cases.sum()
+
+    # Total count (based on merged data)
+    total_count = len(df_merged)
+
+    # Compute accuracy
+    accuracy = correct_count / total_count if total_count > 0 else 0
+
+    # Print the result
+    print(f"Accuracy: {accuracy:.4f} ({correct_count}/{total_count})")
+
+    print("Classified Data Range:", df_classified["datetime"].min(), "to", df_classified["datetime"].max())
+    print("Annotated Data Range:", df_annotated["datetime"].min(), "to", df_annotated["datetime"].max())
+
+    # Check how many matching timestamps exist
+    matching_datetimes = df_classified["datetime"].isin(df_annotated["datetime"])
+    print(f"Matching timestamps: {matching_datetimes.sum()} / {len(df_classified)}")
+
 
 
 if __name__ == "__main__":

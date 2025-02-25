@@ -73,7 +73,7 @@ def load_and_combine_csv(files: list[str]) -> pd.DataFrame:
     return pd.concat([pd.read_csv(file) for file in files], ignore_index=True)
 
 
-def preprocess_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.DataFrame:
+def cut_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.DataFrame:
     """
     Preprocess the data: filter by date, resample, and smooth.
     Args:
@@ -89,12 +89,13 @@ def preprocess_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.Dat
     CONFIG["UNTIL_DATE"] = until_date
 
     df = df.dropna(subset=["datetime"])
-    df.set_index("datetime", inplace=True)
-    df = df[df.index >= from_date]
-    df = df[df.index < until_date]
+    df = df[(df["datetime"] >= from_date) & (df["datetime"] < until_date)]
+    return df
+
+def resample_data(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.set_index("datetime", drop=False)
     df_resampled = df.resample(CONFIG["RESAMPLE_RATE"]).mean().interpolate()
     return df_resampled
-
 
 def scale_column(df: pd.DataFrame, column: str) -> None:
     """
@@ -206,22 +207,11 @@ def main():
     console.print(f"[bold yellow]From:[/bold yellow] {from_date}")
     console.print(f"[bold yellow]Until:[/bold yellow] {until_date}")
 
-    # Process Phyto Node 
-    # phyto_files = discover_files(data_dir, prefix)
-    # df_phyto = load_and_combine_csv(phyto_files)
-    # df_phyto['datetime'] = pd.to_datetime(df_phyto['datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
-    # df_phyto = preprocess_data(df_phyto, from_date, until_date)
-    # df_phyto["CH1_milli_volt"] = ((df_phyto["CH1"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
-    # df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
-    # df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
-    # df_phyto["CH2_smoothed"] = df_phyto["CH2_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
-    # scale_column(df_phyto, "CH1_smoothed")
-    # scale_column(df_phyto, "CH2_smoothed")
-
     # Process Classified Data
     classified_files = discover_files(data_dir, "C1")
     df_classified = load_and_combine_csv(classified_files)
     df_classified['datetime'] = pd.to_datetime(df_classified['Datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
+    df_classified = cut_data(df_classified, from_date, until_date)
     # Extract classification probabilities
     df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
     df_classified['ClassificationCh1_1'] = df_classified['ClassificationCh1'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
@@ -258,7 +248,8 @@ def main():
     df_temp = load_and_combine_csv(temp_files)
     df_temp = df_temp.rename(columns={'timestamp': 'datetime'})
     df_temp['datetime'] = pd.to_datetime(df_temp['datetime'], format='%Y-%m-%d_%H:%M:%S:%f', errors='coerce')
-    df_temp = preprocess_data(df_temp, from_date, until_date)
+    df_temp = cut_data(df_temp, from_date, until_date)
+    df_temp = resample_data(df_temp)
     df_temp["avg_leaf_temp"] = (df_temp["T1_leaf"] + df_temp["T2_leaf"]) / 2
     df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
 

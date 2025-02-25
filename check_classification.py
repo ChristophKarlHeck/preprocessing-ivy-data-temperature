@@ -119,24 +119,34 @@ def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, s
         save_dir (str): Directory to save the plots.
     """
 
-    # Define colors based on classification threshold (0.5 for Class 0)
-    colors_ch0 = ['blue' if p > 0.5 else 'red' for p in df_classified['ClassificationCh0_0']]
-    colors_ch1 = ['blue' if p > 0.5 else 'red' for p in df_classified['ClassificationCh1_0']]
+    window_size = 100
+
+    # Compute rolling averages
+    ch0_smoothed = df_classified['ClassificationCh0_1'].rolling(window=window_size, min_periods=1).mean()
+    ch1_smoothed = df_classified['ClassificationCh1_1'].rolling(window=window_size, min_periods=1).mean()
+
 
     fig, axs = plt.subplots(3, 1, figsize=(14, 14), sharex=True)
 
-    # Define base y-positions for slope lines
-    y_ch0 = 0.55  # Close to classification Ch0
-    y_ch1 = 0.45  # Close to classification Ch
-
     # Scatter plot for classification
-    axs[0].scatter(df_classified['datetime'], [y_ch0] * len(df_classified), c=colors_ch0, label="Ch0", marker='o', s=50)
-    axs[0].scatter(df_classified['datetime'], [y_ch1] * len(df_classified), c=colors_ch1, label="Ch1", marker='s', s=50)
-    axs[0].set_yticks([y_ch0, y_ch1])
-    axs[0].set_yticklabels(["Ch1", "Ch0"])
+    axs[0].plot(df_classified['datetime'], ch0_smoothed, label="Ch0", color="blue")
+    axs[0].plot(df_classified['datetime'], ch1_smoothed, label="Ch1", color="green")
+
+    axs[0].axhline(y=0.5, color="red", linestyle="--", linewidth=1, label="Threshold 0.5")
+
+    axs[0].fill_between(df_classified['datetime'], 0.5, 1.0, 
+                    where=(ch0_smoothed > 0.65) & (ch1_smoothed > 0.65), 
+                    color='gray', alpha=0.3, label="Both > 0.65")
+
+    # Ensure y-axis limits and set explicit tick marks
+    axs[0].set_ylim(0, 1.1)
+    axs[0].set_yticks([0, 0.25, 0.5, 0.75, 1])  # Explicitly set y-ticks
+    axs[0].set_yticklabels(["0", "0.25", "0.5", "0.75", "1"])  # Ensure labels are visible
+
     axs[0].set_title("Classification Over Time")
     axs[0].legend()
     axs[0].grid(True, axis='x', linestyle='--', alpha=0.7)
+
 
     # Line plot for interpolated electric potential
     axs[1].plot(df_classified['datetime'], df_classified['LastVoltageCh0'], label="Scaled Voltage Ch0", color="blue")
@@ -220,8 +230,9 @@ def main():
     df_classified = load_and_combine_csv(classified_files)
     df_classified['datetime'] = pd.to_datetime(df_classified['Datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
     # Extract classification probabilities
-    df_classified['ClassificationCh0_0'] = df_classified['ClassificationCh0'].str.extract(r'\[(\d+\.\d+),')[0].astype(float)
-    df_classified['ClassificationCh1_0'] = df_classified['ClassificationCh1'].str.extract(r'\[(\d+\.\d+),')[0].astype(float)
+    df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
+    df_classified['ClassificationCh1_1'] = df_classified['ClassificationCh1'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
+
 
     # Convert VoltagesCh0NotScaled and VoltagesCh1NotScaled from string to lists of floats
     df_classified['VoltagesCh0'] = df_classified['VoltagesCh0NotScaled'].apply(lambda x: np.array(eval(x)))

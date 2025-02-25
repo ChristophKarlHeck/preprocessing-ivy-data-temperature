@@ -109,7 +109,7 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
     )
 
 
-def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_dir: str) -> None:
+def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, save_dir: str) -> None:
     """
     Plot and save the processed data.
     Args:
@@ -119,23 +119,16 @@ def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, s
         save_dir (str): Directory to save the plots.
     """
 
-    window_size = 100
-
-    # Compute rolling averages
-    ch0_smoothed = df_classified['ClassificationCh0_1'].rolling(window=window_size, min_periods=1).mean()
-    ch1_smoothed = df_classified['ClassificationCh1_1'].rolling(window=window_size, min_periods=1).mean()
-
-
     fig, axs = plt.subplots(3, 1, figsize=(14, 14), sharex=True)
 
     # Scatter plot for classification
-    axs[0].plot(df_classified['datetime'], ch0_smoothed, label="Ch0", color="blue")
-    axs[0].plot(df_classified['datetime'], ch1_smoothed, label="Ch1", color="green")
+    axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="Ch0", color="blue")
+    axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="Ch1", color="green")
 
     axs[0].axhline(y=0.5, color="red", linestyle="--", linewidth=1, label="Threshold 0.5")
 
     axs[0].fill_between(df_classified['datetime'], 0.5, 1.0, 
-                    where=(ch0_smoothed > 0.65) & (ch1_smoothed > 0.65), 
+                    where=(df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold), 
                     color='gray', alpha=0.3, label="Both > 0.65")
 
     # Ensure y-axis limits and set explicit tick marks
@@ -233,6 +226,19 @@ def main():
     df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
     df_classified['ClassificationCh1_1'] = df_classified['ClassificationCh1'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
 
+    window_size = 100 # 100 = 10min
+
+        # Compute rolling averages and store them in the dataframe
+    df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
+    df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
+
+    threshold = 0.6
+
+    # Create the final classification heat column
+    df_classified["final_classification_heat"] = ((df_classified["ch0_smoothed"] > threshold) & 
+                                                (df_classified["ch1_smoothed"] > threshold)).astype(int)
+
+
 
     # Convert VoltagesCh0NotScaled and VoltagesCh1NotScaled from string to lists of floats
     df_classified['VoltagesCh0'] = df_classified['VoltagesCh0NotScaled'].apply(lambda x: np.array(eval(x)))
@@ -260,7 +266,7 @@ def main():
     preprocessed_dir = os.path.join(data_dir, "preprocessed")
     os.makedirs(preprocessed_dir, exist_ok=True)
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    plot_data(df_classified, df_temp, prefix, preprocessed_dir)
+    plot_data(df_classified, df_temp, prefix, threshold, preprocessed_dir)
 
 
 if __name__ == "__main__":

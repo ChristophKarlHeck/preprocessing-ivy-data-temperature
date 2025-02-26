@@ -8,8 +8,8 @@ from matplotlib.colors import LinearSegmentedColormap
 
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
-    temp_annotated_path = os.path.join(data_dir, "preprocessed_old/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_old/{prefix}_preprocessed.csv")
+    temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
+    preprocessed_path = os.path.join(data_dir, f"preprocessed/{prefix}_preprocessed.csv")
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     yticks = [-300, -200, -100, 0, 100, 200, 300]
     ytick_labels = ["-300", "-200", "-100", "0", "100", "200", "300"]
     
-    axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=10, cmap='Reds', mincnt=1)
+    axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=50, cmap='Reds', mincnt=1)
     axes[0].set_title("Training Data Ch0")
     axes[0].set_xlabel("Time (minutes relative to Increasing start)")
     axes[0].set_ylabel("Scaled Electrical Potential (mV)")
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     axes[0].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
     axes[0].legend()
     
-    axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=10, cmap='Blues', mincnt=1)
+    axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=50, cmap='Blues', mincnt=1)
     axes[1].set_title("Training Data Ch1")
     axes[1].set_xlabel("Time (minutes relative to Increasing start)")
     axes[1].set_ylabel("Scaled Electrical Potential (mV)")

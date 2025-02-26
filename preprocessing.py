@@ -22,8 +22,9 @@ CONFIG = {
     "GAIN": 4.0,
     "WINDOW_SIZE": 5,
     "RESAMPLE_RATE": "1s",
-    "MIN_VALUE": -0.2,
-    "MAX_VALUE": 0.2,
+    "MIN_VALUE": -200,
+    "MAX_VALUE": 200,
+    "FACTOR": 1000,
 }
 
 # Initialize the console
@@ -102,8 +103,8 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
         column (str): Column to scale.
     """
     console.print(f"[bold magenta]Scaling column '{column}' using Min-Max Scaling...[/bold magenta]")
-    df[f"{column}_scaled"] = (df[column] - CONFIG["MIN_VALUE"]) / (
-        CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
+    df[f"{column}_scaled"] = ((df[column] - CONFIG["MIN_VALUE"]) / (
+        CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]) * CONFIG["FACTOR"]
     )
 
 
@@ -122,6 +123,8 @@ def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_d
     axs[0].plot(df_phyto.index, df_phyto["CH1_milli_volt"], label="CH1 Resampled")
     axs[0].plot(df_phyto.index, df_phyto["CH1_smoothed"], label="CH1 Smoothed", linestyle="--")
     axs[0].set_title(f"{prefix} CH1: Resampled and Smoothed Data")
+    axs[0].set_ylabel("Voltage (mV)")  # Add y-axis label
+    axs[0].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
     axs[0].legend()
     axs[0].grid()
 
@@ -129,13 +132,15 @@ def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_d
     axs[1].plot(df_phyto.index, df_phyto["CH2_milli_volt"], label="CH2 Resampled")
     axs[1].plot(df_phyto.index, df_phyto["CH2_smoothed"], label="CH2 Smoothed", linestyle="--")
     axs[1].set_title(f"{prefix} CH2: Resampled and Smoothed Data")
+    axs[1].set_ylabel("Voltage (mV)")  # Add y-axis label
+    axs[1].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
     axs[1].legend()
     axs[1].grid()
 
     # Scaled Data
     axs[2].plot(df_phyto.index, df_phyto["CH1_smoothed_scaled"], label="CH1 Scaled", linestyle=":")
     axs[2].plot(df_phyto.index, df_phyto["CH2_smoothed_scaled"], label="CH2 Scaled", linestyle="--")
-    axs[2].set_title(f"{prefix} CH1, CH2: Scaled Data")
+    axs[2].set_title(f"{prefix} CH1, CH2: Scaled Data by factor {CONFIG['FACTOR']}")
     axs[2].legend()
     axs[2].grid()
 

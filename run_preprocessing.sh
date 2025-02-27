@@ -25,3 +25,5 @@ python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/8_20
 
 python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --from_date 2025-02-13 --until_date 2025-02-20
 python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --from_date 2025-02-13 --until_date 2025-02-20
+
+python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/10_2025_02_20-2025_02_27 --from_date 2025-02-20 --until_date 2025-02-27

@@ -254,13 +254,22 @@ def main():
         "LastVoltageCh0": df_classified["LastVoltageCh0"],
         "LastVoltageCh1": df_classified["LastVoltageCh1"]
     })
-    print(df_input_nn.head())
+    num_rows = len(df_input_nn)
+    print("Number of data points:", num_rows)
+    # df_input_nn = df_input_nn.set_index("datetime", drop=False)
+    # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
+    num_rows = len(df_input_nn)
+    print("Number of data points:", num_rows)
     scale_column(df_input_nn, "LastVoltageCh0")
     scale_column(df_input_nn, "LastVoltageCh1")
     df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size, min_periods=1).mean()
     df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size, min_periods=1).mean()
     # df_input_nn = df_input_nn.set_index("datetime", drop=False)
     # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
+
+    # df_input_nn["time_diff"] = df_input_nn["datetime"].diff()
+    # print(df_input_nn["time_diff"].value_counts())
+
 
     print(df_input_nn.head())
 

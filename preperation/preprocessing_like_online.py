@@ -91,7 +91,7 @@ def preprocess_data(df: pd.DataFrame, from_date: str, until_date: str) -> pd.Dat
     df.set_index("datetime", inplace=True)
     df = df[df.index >= from_date]
     df = df[df.index < until_date]
-    df_resampled = df.resample(CONFIG["RESAMPLE_RATE"]).mean().interpolate()
+    df_resampled = df.resample("1s").mean().interpolate()
     return df_resampled
 
 

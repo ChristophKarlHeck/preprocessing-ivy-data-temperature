@@ -130,24 +130,24 @@ if __name__ == "__main__":
     # Create subplots for CH1 and CH2
     fig, axes = plt.subplots(2, 1, figsize=(12, 12))
 
-    yticks = [-300, -200, -100, 0, 100, 200, 300]
-    ytick_labels = ["-300", "-200", "-100", "0", "100", "200", "300"]
+    yticks = [-3000, -2000, -1000, 0, 1000, 2000, 3000]
+    ytick_labels = ["-3000", "-2000", "-1000", "0", "1000", "2000", "3000"]
     
-    axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=100, cmap='Reds', mincnt=1)
+    axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=30, cmap='Reds', mincnt=1)
     axes[0].set_title("Training Data Ch0")
     axes[0].set_xlabel("Time (minutes relative to Increasing start)")
     axes[0].set_ylabel("Scaled Electrical Potential (mV)")
-    axes[0].set_ylim([-300, 300])
+    axes[0].set_ylim([-3000, 3000])
     axes[0].set_yticks(yticks)
     axes[0].set_yticklabels(ytick_labels)
     axes[0].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
     axes[0].legend()
     
-    axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=100, cmap='Blues', mincnt=1)
+    axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=30, cmap='Blues', mincnt=1)
     axes[1].set_title("Training Data Ch1")
     axes[1].set_xlabel("Time (minutes relative to Increasing start)")
     axes[1].set_ylabel("Scaled Electrical Potential (mV)")
-    axes[1].set_ylim([-300, 300])
+    axes[1].set_ylim([-3000, 3000])
     axes[1].set_yticks(yticks)
     axes[1].set_yticklabels(ytick_labels)
     axes[1].axvline(0, color='blue', linestyle='--', label="Start of Increasing")

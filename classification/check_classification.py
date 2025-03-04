@@ -97,6 +97,12 @@ def resample_data(df: pd.DataFrame) -> pd.DataFrame:
     df_resampled = df.resample(CONFIG["RESAMPLE_RATE"]).mean().interpolate()
     return df_resampled
 
+def resample_input_nn_data(df: pd.DataFrame) -> None:
+    """Resamples the DataFrame in place using the specified resample rate."""
+    
+
+    df = df.resample("1s").mean().interpolate()
+
 def scale_column(df: pd.DataFrame, column: str) -> None:
     """
     Scale a column using min-max scaling.
@@ -110,7 +116,7 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
     )
 
 
-def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, save_dir: str) -> None:
+def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, save_dir: str) -> None:
     """
     Plot and save the processed data.
     Args:
@@ -128,9 +134,14 @@ def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, t
 
     axs[0].axhline(y=0.5, color="red", linestyle="--", linewidth=1, label="Threshold 0.5")
 
-    axs[0].fill_between(df_classified['datetime'], 0.5, 1.0, 
+    axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
                     where=(df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold), 
-                    color='gray', alpha=0.3, label="Both > 0.65")
+                    color='gray', alpha=0.3, label="Stimulus prediction")
+
+
+    axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
+                where=(df_merged["phase"].isin(["Increasing", "Holding"])), 
+                    color='green', alpha=0.3, label="Stimulus application")
 
     # Ensure y-axis limits and set explicit tick marks
     axs[0].set_ylim(0, 1.1)
@@ -143,8 +154,8 @@ def plot_data(df_classified: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, t
 
 
     # Line plot for interpolated electric potential
-    axs[1].plot(df_classified['datetime'], df_classified['LastVoltageCh0'], label="Scaled Voltage Ch0", color="blue")
-    axs[1].plot(df_classified['datetime'], df_classified['LastVoltageCh1'], label="Scaled Voltage Ch1", color="green", linestyle="dashed")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh0'], label="Scaled Voltage Ch0", color="blue")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh1'], label="Scaled Voltage Ch1", color="green", linestyle="dashed")
 
     # Labels and Titles
     axs[1].set_ylabel("Electric Potential (mV)")
@@ -190,11 +201,13 @@ def main():
     # Argument parser
     parser = argparse.ArgumentParser(description="Preprocess CSV files.")
     parser.add_argument("--data_dir", required=True, help="Directory with raw files.")
+    parser.add_argument("--prefix", required=True, help="C1")
     parser.add_argument("--from_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
     parser.add_argument("--until_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data after that date.")
     args = parser.parse_args()
 
     # Normalize and validate inputs
+    prefix = args.prefix.upper()
     data_dir = args.data_dir.lower()
     from_date = validate_date(args.from_date)
     until_date = validate_date(args.until_date)
@@ -205,9 +218,10 @@ def main():
     console.print(f"[bold yellow]Until:[/bold yellow] {until_date}")
 
     # Process Classified Data
-    classified_files = discover_files(data_dir, "C1")
+    classified_files = discover_files(data_dir, prefix)
     df_classified = load_and_combine_csv(classified_files)
     df_classified['datetime'] = pd.to_datetime(df_classified['Datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
+    df_classified = df_classified.sort_values(by="datetime").reset_index(drop=True)
     df_classified = cut_data(df_classified, from_date, until_date)
     # Extract classification probabilities
     df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
@@ -219,7 +233,7 @@ def main():
     df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
     df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
 
-    threshold = 0.6
+    threshold = 0.9
 
     # Create the final classification heat column
     df_classified["final_classification_heat"] = ((df_classified["ch0_smoothed"] > threshold) & 
@@ -234,10 +248,22 @@ def main():
     # Extract the last voltage value for both channels
     df_classified['LastVoltageCh0'] = df_classified['VoltagesCh0'].apply(lambda x: x[-1])
     df_classified['LastVoltageCh1'] = df_classified['VoltagesCh1'].apply(lambda x: x[-1])
-    scale_column(df_classified, "LastVoltageCh0")
-    scale_column(df_classified, "LastVoltageCh1")
 
-    df_classified = df_classified.sort_values(by="Datetime").drop_duplicates(subset="Datetime").reset_index(drop=True)
+    df_input_nn = pd.DataFrame({
+        "datetime": df_classified["datetime"],
+        "LastVoltageCh0": df_classified["LastVoltageCh0"],
+        "LastVoltageCh1": df_classified["LastVoltageCh1"]
+    })
+    print(df_input_nn.head())
+    scale_column(df_input_nn, "LastVoltageCh0")
+    scale_column(df_input_nn, "LastVoltageCh1")
+    df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size, min_periods=1).mean()
+    df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size, min_periods=1).mean()
+    # df_input_nn = df_input_nn.set_index("datetime", drop=False)
+    # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
+
+    print(df_input_nn.head())
+
 
  
     # Process Temperature Node
@@ -250,13 +276,8 @@ def main():
     df_temp["avg_leaf_temp"] = (df_temp["T1_leaf"] + df_temp["T2_leaf"]) / 2
     df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
 
-    # Save and Plot
-    preprocessed_dir = os.path.join(data_dir, "preprocessed")
-    os.makedirs(preprocessed_dir, exist_ok=True)
-    save_config_to_txt(CONFIG, preprocessed_dir, "C1")
-    plot_data(df_classified, df_temp, "C1", threshold, preprocessed_dir)
-
     # Calculate Arruracy
+    preprocessed_dir = os.path.join(data_dir, "preprocessed")
     annotated_file = os.path.join(preprocessed_dir, "temp_annotated.csv")
     df_annotated = pd.read_csv(annotated_file)
     df_annotated["datetime"] = pd.to_datetime(df_annotated["datetime"], errors="coerce")
@@ -265,9 +286,19 @@ def main():
     df_classified["datetime"] = df_classified["datetime"].dt.floor("s")
     df_annotated["datetime"] = df_annotated["datetime"].dt.floor("s")
 
-
     # Merge both DataFrames on "datetime" to ensure alignment
     df_merged = df_classified.merge(df_annotated, on="datetime", how="inner")
+
+    # Save and Plot
+    
+    os.makedirs(preprocessed_dir, exist_ok=True)
+    save_config_to_txt(CONFIG, preprocessed_dir, prefix)
+    plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, preprocessed_dir)
+
+
+
+
+
 
     # Define correct classification cases
     correct_cases = (

@@ -4,32 +4,26 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-# def adjust_start_times(start_times, decrease_segments):
-#     adjusted_times = []
-#     print("Adjusting Increasing Phase Start Times:")
-#     for i, start_time in enumerate(start_times):
-#         # Plot 60 min segment around the decrease
-#         if i < len(decrease_segments):
-#             plt.figure(figsize=(10, 4))
-#             plt.plot(decrease_segments[i]['datetime'], decrease_segments[i]['CH1_smoothed_scaled'], label='CH1')
-#             plt.axvline(start_time, color='red', linestyle='--', label='Original Increasing Start')
-#             plt.xlabel("Datetime")
-#             plt.ylabel("Signal Intensity")
-#             plt.legend()
-#             plt.title(f"60 min around Decreasing for Adjusting Start {i}")
-#             plt.show()
-        
-#         print(f"{i}: {start_time} (Enter adjustment in minutes, positive or negative, or 'skip' to ignore)")
-#         user_input = input("Adjustment: ")
-#         if user_input.lower() == 'skip':
-#             continue
-#         try:
-#             adjustment = float(user_input)
-#             adjusted_times.append(start_time + pd.Timedelta(minutes=adjustment))
-#         except ValueError:
-#             print("Invalid input, keeping original time.")
-#             adjusted_times.append(start_time)
-#     return adjusted_times
+#'CH1_smoothed' -> 'CH1_smoothed_scaled'
+
+def z_score_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
+    """
+    Apply Z-Score normalization to a given data slice.
+
+    Args:
+        data_slice (np.ndarray): The input array to normalize.
+        factor (float): Scaling factor to adjust the normalized values (default is 1.0).
+
+    Returns:
+        np.ndarray: The Z-score normalized array.
+    """
+    mean = np.mean(data_slice)
+    std = np.std(data_slice)
+
+    if std == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero
+
+    return ((data_slice - mean) / std) * factor
 
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
@@ -62,14 +56,14 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
     
     # Plot CH1
-    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed_scaled'], color='black', label='CH1')
+    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed'], color='black', label='CH1')
     axes[0].set_title('CH1 Signal')
     axes[0].set_ylabel('Preprocessed Data')
     axes[0].grid()
     axes[0].legend()
     
     # Plot CH2
-    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed_scaled'], color='black', label='CH2')
+    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed'], color='black', label='CH2')
     axes[1].set_title('CH2 Signal')
     axes[1].set_ylabel('Preprocessed Data')
     axes[1].grid()
@@ -113,15 +107,16 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
     for start_time in distinct_increasing_starts:
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
-        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled']]
-        segments_ch1.append(segment['CH1_smoothed_scaled'].values)
-        segments_ch2.append(segment['CH2_smoothed_scaled'].values)
+        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed', 'CH2_smoothed']]
+        segments_ch1.append(segment['CH1_smoothed'].values)
+        segments_ch2.append(segment['CH2_smoothed'].values)
         segments_datetime.append(segment['datetime'].values)
 
-    results = []
+    
     num_slices = int((before+after)/split_minutes)  # Each segment is split into 6 slices (10 min each)
     samples_per_slice = int(((before+after)*60)/num_slices) # 10 minutes at 1Hz sampling
 
+    results = []
     for segment_index, (segment_ch1, segment_ch2, segment_datetime) in enumerate(zip(segments_ch1, segments_ch2, segments_datetime)):
         plant_name = plants.iloc[0][f'{prefix}']  # Extract plant name
         
@@ -163,12 +158,12 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
     # Convert to DataFrame and save to CSV
     df_results = pd.DataFrame(results)
-    output_dir = os.path.join(data_dir, "training_data")
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
-    df_results.to_csv(output_path, index=False)
+    # output_dir = os.path.join(data_dir, "training_data")
+    # os.makedirs(output_dir, exist_ok=True)
+    # output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
+    # df_results.to_csv(output_path, index=False)
 
-    print(f"Processed slices stored in {output_path}")
+    #print(f"Processed slices stored in {output_path}")
 
     # Convert to NumPy arrays for processing
     segments_ch1 = np.array(segments_ch1)
@@ -221,6 +216,103 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     # Plot CH2
     for heat, color in zip([0, 1], ['blue', 'orange']):
         subset = df_results[(df_results['Channel'] == 1) & (df_results['Heat'] == heat)]
+        first_entry = True
+        for _, row in subset.iterrows():
+            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)
+            values = row[[col for col in row.index if col.startswith('val_')]].values
+            axes[1].plot(time_range, values, color=color, alpha=0.5, label=f'CH1 Heat {heat}' if first_entry else "")
+            first_entry = False
+    axes[1].set_title('CH1 Signal')
+    axes[1].set_ylabel('Preprocessed Data')
+    axes[1].grid()
+    axes[1].legend()
+
+    # Plot Temperature with Phase Colors
+    for phase, color in [('Increasing', 'green'), ('Decreasing', 'red'), ('Holding', 'purple'), ('Nothing', 'grey')]:
+        phase_data = temp_annotated[temp_annotated['phase'] == phase]
+        axes[2].scatter(phase_data['datetime'], phase_data['avg_air_temp'], color=color, label=phase, s=10)
+
+    axes[2].set_title('Temperature with Phases')
+    axes[2].set_ylabel('Temperature (°C)')
+    axes[2].grid()
+    axes[2].legend(loc='upper right')
+
+    plt.xlabel('Datetime')
+    plt.tight_layout()
+    plt.show()
+
+    #--------------------------------------------Z-Scaling-----------------------------------------------------------------------------#
+
+    results_z_scaling = []
+    for segment_index, (segment_ch1, segment_ch2, segment_datetime) in enumerate(zip(segments_ch1, segments_ch2, segments_datetime)):
+        plant_name = plants.iloc[0][f'{prefix}']  # Extract plant name
+        
+        for slice_index in range(num_slices):
+            start_idx = slice_index * samples_per_slice
+            end_idx = start_idx + samples_per_slice
+            
+            # Extract the 10-min slice for both CH1 and CH2
+            
+
+            # Determine the Heat label
+            heat = 0 if slice_index < int((before/split_minutes)) else 1  # First 3 slices -> 0, Last 3 slices -> 1
+
+            # Construct row with 600 data points for both channels + metadata
+            slice_data_ch1 = segment_ch1[start_idx:end_idx]
+            slice_data_ch1_scaled = z_score_normalize(slice_data_ch1, 1000)
+            row_ch0 = {
+                'Start_Datetime': segment_datetime[start_idx],
+                'End_Datetime': segment_datetime[end_idx],
+                'Plant': plant_name,
+                'Channel': 0,
+                'Heat': heat
+            }
+            row_ch0.update({f'val_{i}': slice_data_ch1_scaled[i] for i in range(samples_per_slice)})  # CH1 values
+            results_z_scaling.append(row_ch0)
+
+            slice_data_ch2 = segment_ch2[start_idx:end_idx]
+            slice_data_ch2_scaled = z_score_normalize(slice_data_ch2, 1000)
+            row_ch1 = {
+                'Start_Datetime': segment_datetime[start_idx],
+                'End_Datetime': segment_datetime[end_idx],
+                'Plant': plant_name,
+                'Channel': 1,
+                'Heat': heat
+            }
+            row_ch1.update({f'val_{i}': slice_data_ch2_scaled[i] for i in range(samples_per_slice)})  # CH2 values
+
+            results_z_scaling.append(row_ch1)
+    
+    df_results_z_scaling = pd.DataFrame(results_z_scaling)
+    output_dir = os.path.join(data_dir, "training_data")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
+    df_results_z_scaling.to_csv(output_path, index=False)
+
+    # Convert Start_Datetime and End_Datetime to datetime
+    df_results_z_scaling['Start_Datetime'] = pd.to_datetime(df_results_z_scaling['Start_Datetime'])
+    df_results_z_scaling['End_Datetime'] = pd.to_datetime(df_results_z_scaling['End_Datetime'])
+
+    # Create plots
+    fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
+
+    # Plot CH1
+    for heat, color in zip([0, 1], ['blue', 'orange']):
+        subset = df_results_z_scaling[(df_results_z_scaling['Channel'] == 0) & (df_results_z_scaling['Heat'] == heat)]
+        first_entry = True
+        for _, row in subset.iterrows():
+            time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)
+            values = row[[col for col in row.index if col.startswith('val_')]].values
+            axes[0].plot(time_range, values, color=color, alpha=0.5, label=f'CH0 Heat {heat}' if first_entry else "")
+            first_entry = False
+    axes[0].set_title('CH0 Signal')
+    axes[0].set_ylabel('Preprocessed Data')
+    axes[0].grid()
+    axes[0].legend()
+
+    # Plot CH2
+    for heat, color in zip([0, 1], ['blue', 'orange']):
+        subset = df_results_z_scaling[(df_results_z_scaling['Channel'] == 1) & (df_results_z_scaling['Heat'] == heat)]
         first_entry = True
         for _, row in subset.iterrows():
             time_range = pd.date_range(start=row['Start_Datetime'], end=row['End_Datetime'], periods=len(row)-5)

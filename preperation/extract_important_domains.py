@@ -244,9 +244,13 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     #--------------------------------------------Z-Scaling-----------------------------------------------------------------------------#
 
     results_z_scaling = []
+    segment_ch1_z_scaling = []
+    segment_ch2_z_scaling = []
     for segment_index, (segment_ch1, segment_ch2, segment_datetime) in enumerate(zip(segments_ch1, segments_ch2, segments_datetime)):
         plant_name = plants.iloc[0][f'{prefix}']  # Extract plant name
-        
+
+        local_ch1_z_scaling=[]
+        local_ch2_z_scaling=[]
         for slice_index in range(num_slices):
             start_idx = slice_index * samples_per_slice
             end_idx = start_idx + samples_per_slice
@@ -260,6 +264,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             # Construct row with 600 data points for both channels + metadata
             slice_data_ch1 = segment_ch1[start_idx:end_idx]
             slice_data_ch1_scaled = z_score_normalize(slice_data_ch1, 1000)
+            local_ch1_z_scaling.extend(slice_data_ch1_scaled)
             row_ch0 = {
                 'Start_Datetime': segment_datetime[start_idx],
                 'End_Datetime': segment_datetime[end_idx],
@@ -272,6 +277,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
             slice_data_ch2 = segment_ch2[start_idx:end_idx]
             slice_data_ch2_scaled = z_score_normalize(slice_data_ch2, 1000)
+            local_ch2_z_scaling.extend(slice_data_ch2_scaled)
             row_ch1 = {
                 'Start_Datetime': segment_datetime[start_idx],
                 'End_Datetime': segment_datetime[end_idx],
@@ -282,12 +288,41 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             row_ch1.update({f'val_{i}': slice_data_ch2_scaled[i] for i in range(samples_per_slice)})  # CH2 values
 
             results_z_scaling.append(row_ch1)
+        segment_ch1_z_scaling.append(local_ch1_z_scaling)
+        segment_ch2_z_scaling.append(local_ch2_z_scaling)
+
     
     df_results_z_scaling = pd.DataFrame(results_z_scaling)
     output_dir = os.path.join(data_dir, "training_data")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
     df_results_z_scaling.to_csv(output_path, index=False)
+
+    # Convert to NumPy arrays for processing
+    segments_ch1 = np.array(segment_ch1_z_scaling)
+    segments_ch2 = np.array(segment_ch2_z_scaling)
+
+    # Compute mean and standard deviation
+    mean_ch1, std_ch1 = np.nanmean(segments_ch1, axis=0), np.nanstd(segments_ch1, axis=0)
+    mean_ch2, std_ch2 = np.nanmean(segments_ch2, axis=0), np.nanstd(segments_ch2, axis=0)
+    
+    # Time axis for plotting
+    time_axis = np.linspace(-before, after, segments_ch1.shape[1])
+    
+    # Plot mean and standard deviation as shaded regions
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_axis, mean_ch1, color='black', label='CH1 Mean')
+    plt.fill_between(time_axis, mean_ch1 - std_ch1, mean_ch1 + std_ch1, color='black', alpha=0.2)
+    
+    plt.plot(time_axis, mean_ch2, color='red', label='CH2 Mean')
+    plt.fill_between(time_axis, mean_ch2 - std_ch2, mean_ch2 + std_ch2, color='red', alpha=0.2)
+    
+    plt.axvline(0, color='blue', linestyle='--', label='Start of Increasing')
+    plt.xlabel("Time (minutes relative to Increasing start)")
+    plt.ylabel("Signal Intensity")
+    plt.title("CH1 and CH2 Response Around Increasing Phase Start")
+    plt.legend()
+    plt.grid()
 
     # Convert Start_Datetime and End_Datetime to datetime
     df_results_z_scaling['Start_Datetime'] = pd.to_datetime(df_results_z_scaling['Start_Datetime'])

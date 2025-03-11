@@ -13,9 +13,19 @@ import pandas as pd
 import numpy as np
 import glob
 import argparse
+import matplotlib
 import matplotlib.pyplot as plt
 from typing import Optional
 from scipy.interpolate import make_interp_spline
+
+matplotlib.use("pgf")
+plt.rcParams.update({
+    "pgf.texsystem": "xelatex",  # Use XeLaTeX for Arial
+    "font.family": "Arial",       # Set font to Arial
+    "font.size": 11,              # Adjust font size
+    "text.usetex": True,          # Enable LaTeX rendering
+    "pgf.rcfonts": False,         # Prevents LaTeX from overriding fonts
+})
 
 # Constants
 CONFIG = {
@@ -171,9 +181,10 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[2].grid()
 
     plt.tight_layout()
-    plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
-    plt.savefig(plot_path, dpi=300)
-    plt.show()
+    plt.savefig('histogram.pgf')
+    #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
+    #plt.savefig(plot_path, dpi=300)
+    #plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """

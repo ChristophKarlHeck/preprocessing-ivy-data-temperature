@@ -103,7 +103,7 @@ def resample_input_nn_data(df: pd.DataFrame) -> None:
 
     df = df.resample("1s").mean().interpolate()
 
-def scale_column(df: pd.DataFrame, column: str) -> None:
+def min_max_scale_column(df: pd.DataFrame, column: str) -> None:
     """
     Scale a column using min-max scaling.
     Args:
@@ -114,7 +114,6 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
     df[f"{column}_scaled"] = (df[column] - CONFIG["MIN_VALUE"]) / (
         CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
     )
-
 
 def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, save_dir: str) -> None:
     """
@@ -245,6 +244,12 @@ def main():
     df_classified['VoltagesCh0'] = df_classified['VoltagesCh0NotScaled'].apply(lambda x: np.array(eval(x)))
     df_classified['VoltagesCh1'] = df_classified['VoltagesCh1NotScaled'].apply(lambda x: np.array(eval(x)))
 
+    # Z-Score
+    faktor = 1000
+    df_classified['VoltagesCh0'] = df_classified['VoltagesCh0'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
+    df_classified['VoltagesCh1'] = df_classified['VoltagesCh1'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
+
+
     # Extract the last voltage value for both channels
     df_classified['LastVoltageCh0'] = df_classified['VoltagesCh0'].apply(lambda x: x[-1])
     df_classified['LastVoltageCh1'] = df_classified['VoltagesCh1'].apply(lambda x: x[-1])
@@ -260,8 +265,8 @@ def main():
     # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
     num_rows = len(df_input_nn)
     print("Number of data points:", num_rows)
-    scale_column(df_input_nn, "LastVoltageCh0")
-    scale_column(df_input_nn, "LastVoltageCh1")
+    # min_max_scale_column(df_input_nn, "LastVoltageCh0")
+    # min_max_scale_column(df_input_nn, "LastVoltageCh1")
     df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size, min_periods=1).mean()
     df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size, min_periods=1).mean()
     # df_input_nn = df_input_nn.set_index("datetime", drop=False)

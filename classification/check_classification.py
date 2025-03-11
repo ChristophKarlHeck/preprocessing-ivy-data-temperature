@@ -180,8 +180,12 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[2].legend()
     axs[2].grid()
 
-    plt.tight_layout()
-    plt.savefig('histogram.pgf')
+    # Improve spacing to prevent label cutoff
+    fig.tight_layout()
+    fig.set_size_inches(4.7747, 3.5)
+
+    # Save figure in PGF format with proper bounding box
+    plt.savefig("minMaxOnlineClassificationWrongC1.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
     #plt.show()
@@ -315,11 +319,9 @@ def main():
     df_merged = df_classified.merge(df_annotated, on="datetime", how="inner")
 
     # Save and Plot
-    
     os.makedirs(preprocessed_dir, exist_ok=True)
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
     plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, preprocessed_dir)
-
 
 
 

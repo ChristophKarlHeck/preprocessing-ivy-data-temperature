@@ -14,23 +14,24 @@ import numpy as np
 import glob
 import argparse
 import matplotlib
+import csv
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from typing import Optional
 from scipy.interpolate import make_interp_spline
 
 # Use the PGF backend
-matplotlib.use("pgf")
+# matplotlib.use("pgf")
 
-# Update rcParams
-plt.rcParams.update({
-    "pgf.texsystem": "xelatex",  # Use XeLaTeX
-    "font.family": "sans-serif",  # Use a sans-serif font
-    "font.sans-serif": ["Arial"],  # Specifically use Arial
-    "font.size": 10,  # Set the font size
-    "text.usetex": True,  # Use LaTeX for text rendering
-    "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
-})
+# # Update rcParams
+# plt.rcParams.update({
+#     "pgf.texsystem": "xelatex",  # Use XeLaTeX
+#     "font.family": "sans-serif",  # Use a sans-serif font
+#     "font.sans-serif": ["Arial"],  # Specifically use Arial
+#     "font.size": 10,  # Set the font size
+#     "text.usetex": True,  # Use LaTeX for text rendering
+#     "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
+# })
 
 # Constants
 CONFIG = {
@@ -176,6 +177,18 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
                 where=(df_merged["phase"].isin(["Increasing", "Holding"])), 
                     color='limegreen', alpha=0.3, label="Stimulus application")
 
+    # Get the first timestamp where phase is "Increasing"
+    # first_increase_time = df_merged.loc[df_merged["phase"] == "Increasing", "datetime"].iloc[0]
+
+    # # Define a 30-minute time window from the first increase timestamp
+    # time_window = pd.Timedelta(minutes=30)
+    # fill_condition = (df_merged["datetime"] >= first_increase_time) & (df_merged["datetime"] <= first_increase_time + time_window)
+
+    # # Use the condition in fill_between
+    # axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
+    #                     where=fill_condition, 
+    #                     color='limegreen', alpha=0.3, label="Stimulus application")
+
     # Ensure y-axis limits and set explicit tick marks
     axs[0].set_ylim(0, 1.05)
     axs[0].set_yticks([0, 0.25, 0.5, 0.75, 1])  # Explicitly set y-ticks
@@ -208,10 +221,10 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     fig.tight_layout()
 
     # Save figure in PGF format with proper bounding box
-    plt.savefig(f"minMaxOnlineClassificationAdjusted{plant_id}Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    #plt.savefig(f"minMaxOnlineClassificationAdjusted{plant_id}Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
-    #plt.show()
+    plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """
@@ -350,36 +363,62 @@ def main():
     # Save and Plot
     os.makedirs(preprocessed_dir, exist_ok=True)
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
+    #plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
 
 
 
 
 
     # Define correct classification cases
-    correct_cases = (
-        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Increasing", "Holding"])) |
+    correct_cases_heat = (
+        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Increasing", "Holding"]))
+    )
+    correct_heat_count = correct_cases_heat.sum()
+
+    false_cases_heat = (
+        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
+    )
+    false_heat_count = false_cases_heat.sum()
+
+    correct_cases_not_heat = (
         ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
     )
+    correct_not_heat_count = correct_cases_not_heat.sum()
 
-    # Count correct cases
-    correct_count = correct_cases.sum()
+    false_cases_not_heat = (
+        ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Increasing", "Holding"]))
+    )
+    false_not_heat_count = false_cases_not_heat.sum()
 
-    # Total count (based on merged data)
-    total_count = len(df_merged)
 
-    # Compute accuracy
-    accuracy = correct_count / total_count if total_count > 0 else 0
+    precision_heat = correct_heat_count/(correct_heat_count + false_heat_count)
+    precision_not_heat = correct_not_heat_count/(correct_not_heat_count + false_not_heat_count)
+
 
     # Print the result
-    print(f"Accuracy: {accuracy:.4f} ({correct_count}/{total_count})")
+    print(f"Preceision Heat: {precision_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_heat_count})")
+    print(f"Preceision Not Heat: {precision_not_heat:.4f}={correct_not_heat_count}/({correct_not_heat_count} + {false_not_heat_count})")
 
-    print("Classified Data Range:", df_classified["datetime"].min(), "to", df_classified["datetime"].max())
-    print("Annotated Data Range:", df_annotated["datetime"].min(), "to", df_annotated["datetime"].max())
+    # Prepare a dictionary with the results
+    results = {
+        'threshold': threshold,
+        'precision_heat': precision_heat,
+        'precision_not_heat': precision_not_heat
+    }
 
-    # Check how many matching timestamps exist
-    matching_datetimes = df_classified["datetime"].isin(df_annotated["datetime"])
-    print(f"Matching timestamps: {matching_datetimes.sum()} / {len(df_classified)}")
+    # Specify the CSV file name
+    csv_file = f"{data_dir}/threshold_engineering_{prefix}.csv"
+
+    # Check if the CSV file exists; if not, we will write the header
+    file_exists = os.path.isfile(csv_file)
+
+    # Append the data to the CSV file
+    with open(csv_file, mode='a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=results.keys())
+        if not file_exists:
+            writer.writeheader()  # Write header only once
+        writer.writerow(results)
+
 
 
 

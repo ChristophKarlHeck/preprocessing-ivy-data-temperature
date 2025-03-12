@@ -165,7 +165,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="CH0", color="blue")
     axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="CH1", color="green")
 
-    axs[0].axhline(y=0.9, color="red", linestyle="--", linewidth=1, label="Threshold: 0.9")
+    axs[0].axhline(y=threshold, color="red", linestyle="--", linewidth=1, label=f"Threshold: {threshold}")
 
     axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
                     where=(df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold), 
@@ -194,7 +194,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[1].tick_params(axis='y', labelsize=10)
     axs[1].set_ylabel("Electric Potential (mV)",fontsize=10)
     axs[1].set_title("Adjusted Min-Max Scaled Input for CNN",fontsize=10)
-    axs[1].legend(fontsize=8)
+    axs[1].legend(fontsize=8, loc="lower right")
 
     # Temperature
     axs[2].tick_params(axis='y', labelsize=10)
@@ -211,7 +211,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     plt.savefig("minMaxOnlineClassificationAdjusted525Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
-    #plt.show()
+    plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """
@@ -270,7 +270,7 @@ def main():
     df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
     df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
 
-    threshold = 0.98
+    threshold = 0.96
 
     # Create the final classification heat column
     df_classified["final_classification_heat"] = ((df_classified["ch0_smoothed"] > threshold) & 

@@ -133,7 +133,7 @@ def min_max_scale_column(df: pd.DataFrame, column: str) -> None:
         CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
     )
 
-def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, save_dir: str) -> None:
+def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, plant_id: int, save_dir: str) -> None:
     """
     Plot and save the processed data.
     Args:
@@ -182,8 +182,8 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[0].set_ylabel("Heat Phase Probability",fontsize=10)
     axs[0].tick_params(axis='y', labelsize=10) 
 
-    axs[0].set_title("Online Heat Phase Classification Using Ivy Data (ID 525)",fontsize=10)
-    axs[0].legend(fontsize=8, loc="lower right", bbox_to_anchor=(0.3, 1.1), framealpha=0.7)
+    axs[0].set_title(f"Online Heat Phase Classification Using Ivy Data (ID {plant_id})", fontsize=10, pad=40)
+    axs[0].legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.25), ncol=3, framealpha=0.7)
 
 
     # Line plot for interpolated electric potential
@@ -192,13 +192,13 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
 
     # Labels and Titles
     axs[1].tick_params(axis='y', labelsize=10)
-    axs[1].set_ylabel("Electric Potential (mV)",fontsize=10)
-    axs[1].set_title("Adjusted Min-Max Scaled Input for CNN",fontsize=10)
+    axs[1].set_ylabel("EDP [scaled]",fontsize=10)
+    axs[1].set_title("Normalized CNN Input via Adjusted Min-Max Scaling",fontsize=10)
     axs[1].legend(fontsize=8, loc="lower right")
 
     # Temperature
     axs[2].tick_params(axis='y', labelsize=10)
-    axs[2].set_ylabel("Temperature (°C)", fontsize=10)
+    axs[2].set_ylabel("Temperature [°C]", fontsize=10)
     axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Average Leaf Temperature", alpha=0.7)
     axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Average Air Temperature", alpha=0.7)
     axs[2].set_title("Temperature Data", fontsize=10)
@@ -208,10 +208,10 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     fig.tight_layout()
 
     # Save figure in PGF format with proper bounding box
-    plt.savefig("minMaxOnlineClassificationAdjusted525Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    plt.savefig(f"minMaxOnlineClassificationAdjusted{plant_id}Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
-    plt.show()
+    #plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """
@@ -241,11 +241,17 @@ def main():
     parser.add_argument("--prefix", required=True, help="C1")
     parser.add_argument("--from_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data before that date.")
     parser.add_argument("--until_date", required=True, help="Cutoff date (YYYY-MM-DD). Cut off data after that date.")
+    parser.add_argument("--threshold", type=float, required=True,
+                        help="Threshold both Channels have to exceed to classify as heat phase")
+    parser.add_argument("--plant_id", type=int, required=True,
+                        help="ID of the plant")
     args = parser.parse_args()
 
     # Normalize and validate inputs
     prefix = args.prefix.upper()
     data_dir = args.data_dir.lower()
+    threshold = args.threshold
+    plant_id = args.plant_id
     from_date = validate_date(args.from_date)
     until_date = validate_date(args.until_date)
 
@@ -270,7 +276,7 @@ def main():
     df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
     df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
 
-    threshold = 0.96
+    
 
     # Create the final classification heat column
     df_classified["final_classification_heat"] = ((df_classified["ch0_smoothed"] > threshold) & 
@@ -344,7 +350,7 @@ def main():
     # Save and Plot
     os.makedirs(preprocessed_dir, exist_ok=True)
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, preprocessed_dir)
+    plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
 
 
 

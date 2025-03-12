@@ -15,16 +15,21 @@ import glob
 import argparse
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from typing import Optional
 from scipy.interpolate import make_interp_spline
 
+# Use the PGF backend
 matplotlib.use("pgf")
+
+# Update rcParams
 plt.rcParams.update({
-    "pgf.texsystem": "xelatex",  # Use XeLaTeX for Arial
-    "font.family": "Arial",       # Set font to Arial
-    "font.size": 11,              # Adjust font size
-    "text.usetex": True,          # Enable LaTeX rendering
-    "pgf.rcfonts": False,         # Prevents LaTeX from overriding fonts
+    "pgf.texsystem": "xelatex",  # Use XeLaTeX
+    "font.family": "sans-serif",  # Use a sans-serif font
+    "font.sans-serif": ["Arial"],  # Specifically use Arial
+    "font.size": 10,  # Set the font size
+    "text.usetex": True,  # Use LaTeX for text rendering
+    "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
 })
 
 # Constants
@@ -44,16 +49,19 @@ console = Console()
 
 def validate_date(date_str: str) -> str:
     """
-    Validate and format the date.
+    Validate and format the datetime.
     Args:
-        date_str (str): Input date string.
+        datetime_str (str): Input datetime string.
     Returns:
-        str: Formatted date string in YYYY-MM-DD format.
+        str: Formatted datetime string in 'YYYY-MM-DD HH:MM' format.
     """
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%Y-%m-%d")
+        # Parse the input string to a datetime object
+        dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+        # Return the formatted datetime string
+        return dt.strftime("%Y-%m-%d %H:%M")
     except ValueError:
-        raise ValueError("Invalid cutoff_date format. Use 'YYYY-MM-DD'.")
+        raise ValueError("Invalid datetime format. Use 'YYYY-MM-DD HH:MM'.")
 
 
 def discover_files(data_dir: str, prefix: str) -> list[str]:
@@ -134,14 +142,30 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
+    df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=1)
+    df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=1)
+    df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=1)
+    df_temp.index = df_temp.index + pd.Timedelta(hours=1)
 
-    fig, axs = plt.subplots(3, 1, figsize=(14, 14), sharex=True)
+    fig_width = 5.90666  # Width in inches
+    aspect_ratio = 0.618  # Example aspect ratio (height/width)
+    fig_height = fig_width * aspect_ratio
+
+    fig, axs = plt.subplots(3, 1, figsize=(fig_width, 8), sharex=True)
+
+    time_fmt = mdates.DateFormatter('%H:%M')
+
+    for ax in axs:
+        ax.grid(True, linestyle='dashed', linewidth=0.5, alpha=0.6)
+        ax.xaxis.set_major_formatter(time_fmt)  # Format x-axis as hours
+        ax.tick_params(axis='x', labelsize=10)  # Set font size to 10
+        plt.setp(ax.get_xticklabels(), fontsize=10, rotation=0, ha='center')
 
     # Scatter plot for classification
-    axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="Ch0", color="blue")
-    axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="Ch1", color="green")
+    axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="CH0", color="blue")
+    axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="CH1", color="green")
 
-    axs[0].axhline(y=0.5, color="red", linestyle="--", linewidth=1, label="Threshold 0.5")
+    axs[0].axhline(y=0.9, color="red", linestyle="--", linewidth=1, label="Threshold: 0.9")
 
     axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
                     where=(df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold), 
@@ -150,42 +174,41 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
 
     axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
                 where=(df_merged["phase"].isin(["Increasing", "Holding"])), 
-                    color='green', alpha=0.3, label="Stimulus application")
+                    color='limegreen', alpha=0.3, label="Stimulus application")
 
     # Ensure y-axis limits and set explicit tick marks
-    axs[0].set_ylim(0, 1.1)
+    axs[0].set_ylim(0, 1.05)
     axs[0].set_yticks([0, 0.25, 0.5, 0.75, 1])  # Explicitly set y-ticks
-    axs[0].set_yticklabels(["0", "0.25", "0.5", "0.75", "1"])  # Ensure labels are visible
+    axs[0].set_ylabel("Heat Phase Probability",fontsize=10)
+    axs[0].tick_params(axis='y', labelsize=10) 
 
-    axs[0].set_title("Classification Over Time")
-    axs[0].legend()
-    axs[0].grid(True, axis='x', linestyle='--', alpha=0.7)
+    axs[0].set_title("Online Heat Phase Classification Using Ivy Data (ID 525)",fontsize=10)
+    axs[0].legend(fontsize=8, loc="lower right", bbox_to_anchor=(0.3, 1.1), framealpha=0.7)
 
 
     # Line plot for interpolated electric potential
-    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh0'], label="Scaled Voltage Ch0", color="blue")
-    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh1'], label="Scaled Voltage Ch1", color="green", linestyle="dashed")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh0'], label="CH0", color="blue")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh1'], label="CH1", color="green", linestyle="dashed")
 
     # Labels and Titles
-    axs[1].set_ylabel("Electric Potential (mV)")
-    axs[1].set_title("Input NN")
-    axs[1].set_xlabel("Datetime")
-    axs[1].legend()
-    axs[1].grid(True, axis='x', linestyle='--', alpha=0.7)
+    axs[1].tick_params(axis='y', labelsize=10)
+    axs[1].set_ylabel("Electric Potential (mV)",fontsize=10)
+    axs[1].set_title("Adjusted Min-Max Scaled Input for CNN",fontsize=10)
+    axs[1].legend(fontsize=8)
 
     # Temperature
-    axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Avg Leaf Temp", alpha=0.7)
-    axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Avg Air Temp", alpha=0.7)
-    axs[2].set_title("Temperature Data")
-    axs[2].legend()
-    axs[2].grid()
+    axs[2].tick_params(axis='y', labelsize=10)
+    axs[2].set_ylabel("Temperature (°C)", fontsize=10)
+    axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Average Leaf Temperature", alpha=0.7)
+    axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Average Air Temperature", alpha=0.7)
+    axs[2].set_title("Temperature Data", fontsize=10)
+    axs[2].legend(fontsize=8, loc="lower right")
 
     # Improve spacing to prevent label cutoff
     fig.tight_layout()
-    fig.set_size_inches(4.7747, 3.5)
 
     # Save figure in PGF format with proper bounding box
-    plt.savefig("minMaxOnlineClassificationWrongC1.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    plt.savefig("minMaxOnlineClassificationAdjusted525Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
     #plt.show()
@@ -247,7 +270,7 @@ def main():
     df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
     df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
 
-    threshold = 0.9
+    threshold = 0.98
 
     # Create the final classification heat column
     df_classified["final_classification_heat"] = ((df_classified["ch0_smoothed"] > threshold) & 

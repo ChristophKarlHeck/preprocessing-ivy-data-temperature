@@ -4,7 +4,31 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import json
+import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
+
+def min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
+    """
+    Apply Min-Max normalization to a given data slice.
+
+    The normalization transforms the data into the range [0, factor].
+
+    Args:
+        data_slice (np.ndarray): The input array to normalize.
+        factor (float): Scaling factor to adjust the normalized values (default is 1.0).
+
+    Returns:
+        np.ndarray: The min-max normalized array.
+    """
+    min_val = data_slice.min()
+    max_val = data_slice.max()
+    range_val = max_val - min_val
+
+    if range_val == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero if all values are the same
+
+    normalized = (data_slice - min_val) / range_val
+    return normalized * factor
 
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
@@ -36,45 +60,64 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     # Extract 60-minute segments around each increasing start
     time_window_before = pd.Timedelta(minutes=before)
     time_window_after = pd.Timedelta(minutes=after)
-    segments_ch1, segments_ch2, segments_datetime = [], [], []
+    segments_ch1, segments_ch2, all_segments, segments_datetime = [], [], [], []
 
     for start_time in distinct_increasing_starts:
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
-        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled']]
+        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed', 'CH2_smoothed']]
 
         if not segment.empty:
             # Normalize CH1
-            ch1_values = segment['CH1_smoothed_scaled'].values
-            ch1_adjusted = ch1_values - ch1_values[0]  # Subtract the first value
+            ch1_values = segment['CH1_smoothed'].values
+            ch1_values = min_max_normalize(ch1_values,1000)
+            #ch1_values = ch1_values - ch1_values[0]  # Subtract the first value
 
             # Normalize CH2 (if needed)
-            ch2_values = segment['CH2_smoothed_scaled'].values
-            ch2_adjusted = ch2_values - ch2_values[0]  # Subtract the first value
+            ch2_values = segment['CH2_smoothed'].values
+            ch2_values = min_max_normalize(ch2_values,1000)
+            #ch2_values = ch2_values - ch2_values[0]  # Subtract the first value
 
-            segments_ch1.append(ch1_adjusted)
-            segments_ch2.append(ch2_adjusted)
+            # segments_ch1.append(ch1_values)
+            # segments_ch2.append(ch2_values)
+            all_segments.append(ch1_values)
+            all_segments.append(ch2_values)
             segments_datetime.append(segment['datetime'].values)
 
 
-    # #Convert to NumPy arrays for processing
-    # segments_ch1 = np.array(segments_ch1)
-    # segments_ch2 = np.array(segments_ch2)
+    # Ensure segments_ch1 and segments_ch2 are NumPy arrays.
+    segments_ch1 = np.array(segments_ch1)
+    segments_ch2 = np.array(segments_ch2)
 
-    # Create a time axis
+    # Calculate the mean (average) segment across all segments.
+    # avg_segment_ch1 = np.mean(segments_ch1, axis=0)
+    # avg_segment_ch2 = np.mean(segments_ch2, axis=0)
+
+    # avg_segment_ch1 = avg_segment_ch1 - avg_segment_ch1[0]
+    # avg_segment_ch2 = avg_segment_ch2 - avg_segment_ch2[0]
+
+    # # Create a time axis for plotting.
+    # # 'before' and 'after' should be defined as the time (in minutes) before and after the event.
     # time_axis = np.linspace(-before, after, segments_ch1.shape[1])
 
     # plt.figure(figsize=(10, 6))
 
+    # # Plot every individual CH1 segment (with some transparency).
     # for segment in segments_ch1:
-    #     plt.plot(time_axis, segment, color='red', alpha=0.1)  # Transparent lines
+    #     plt.plot(time_axis, segment, color='red', alpha=0.1)
 
+    # # Optionally, plot the average CH1 segment in a contrasting style.
+    # plt.plot(time_axis, avg_segment_ch1, color='black', linewidth=2, label='Average CH1')
+
+    # # Add a vertical line to indicate the event (e.g., start of "Increasing").
     # plt.axvline(0, color='blue', linestyle='--', label='Start of Increasing')
+
     # plt.xlabel("Time (minutes relative to Increasing start)")
     # plt.ylabel("Scaled Electrical Potential")
     # plt.title("Overlay of All CH1 Trials")
+    # plt.legend()
     # plt.show()
 
-    return segments_ch1, segments_ch2
+    return all_segments #segments_ch1, segments_ch2
 
 
 if __name__ == "__main__":
@@ -84,77 +127,112 @@ if __name__ == "__main__":
 
     all_segments_ch1 = []
     all_segments_ch2 = []
+    all_segments_both = []
 
     # Iterate over the configurations and call extract_data for each
     for config in configs:
-        segments_ch1, segments_ch2 = extract_data(
+        all_segments = extract_data(
             config["data_dir"],
             config["prefix"],
             config["before"],
             config["after"],
             config["split_minutes"]
         )
-        all_segments_ch1.append(segments_ch1)  # Store as list of measurements
-        all_segments_ch2.append(segments_ch2)
+        # all_segments_ch1.append(segments_ch1)  # Store as list of measurements
+        # all_segments_ch2.append(segments_ch2)
+        all_segments_both.append(all_segments)
 
     # Ensure each segment has the same length and set fixed length to 3600 (600*6)
     max_length = 3600
     time_axis = np.linspace(-30, 30, max_length)
     
-    x_values_ch1 = []
-    y_values_ch1 = []
-    x_values_ch2 = []
-    y_values_ch2 = []
-    
-    for segments in all_segments_ch1:
-        for segment in segments:
-            if len(segment) > max_length:
-                segment = segment[:max_length]  # Trim longer segments
-            time_subset = time_axis[:len(segment)]
-            x_values_ch1.extend(time_subset)
-            y_values_ch1.extend(segment)
-    
-    for segments in all_segments_ch2:
-        for segment in segments:
-            if len(segment) > max_length:
-                segment = segment[:max_length]  # Trim longer segments
-            time_subset = time_axis[:len(segment)]
-            x_values_ch2.extend(time_subset)
-            y_values_ch2.extend(segment)
-    
-    x_values_ch1 = np.array(x_values_ch1)
-    y_values_ch1 = np.array(y_values_ch1)
-    x_values_ch2 = np.array(x_values_ch2)
-    y_values_ch2 = np.array(y_values_ch2)
-    
-    # Create subplots for CH1 and CH2
-    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
+    # x_values_ch1 = []
+    # y_values_ch1 = []
+    # x_values_ch2 = []
+    # y_values_ch2 = []
 
-    yticks = [-3000, -2000, -1000, 0, 1000, 2000, 3000]
-    ytick_labels = ["-3000", "-2000", "-1000", "0", "1000", "2000", "3000"]
+    x_values_both = []
+    y_values_both = []
+
+    # for not average indent 2 spaces 
     
-    axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=30, cmap='Reds', mincnt=1)
-    axes[0].set_title("Training Data Ch0")
-    axes[0].set_xlabel("Time (minutes relative to Increasing start)")
-    axes[0].set_ylabel("Scaled Electrical Potential (mV)")
-    axes[0].set_ylim([-3000, 3000])
-    axes[0].set_yticks(yticks)
-    axes[0].set_yticklabels(ytick_labels)
-    axes[0].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
-    axes[0].legend()
+    # for segments in all_segments_ch1:
+    #     for segment in segments:
+    #         if len(segment) > max_length:
+    #             segment = segment[:max_length]  # Trim longer segments
+    #         time_subset = time_axis[:len(segment)]
+    #         x_values_ch1.extend(time_subset)
+    #         y_values_ch1.extend(segment)
     
-    axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=30, cmap='Blues', mincnt=1)
-    axes[1].set_title("Training Data Ch1")
-    axes[1].set_xlabel("Time (minutes relative to Increasing start)")
-    axes[1].set_ylabel("Scaled Electrical Potential (mV)")
-    axes[1].set_ylim([-3000, 3000])
-    axes[1].set_yticks(yticks)
-    axes[1].set_yticklabels(ytick_labels)
-    axes[1].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
-    axes[1].legend()
+    # for segments in all_segments_ch2:
+    #     for segment in segments:
+    #         if len(segment) > max_length:
+    #             segment = segment[:max_length]  # Trim longer segments
+    #         time_subset = time_axis[:len(segment)]
+    #         x_values_ch2.extend(time_subset)
+    #         y_values_ch2.extend(segment)
+
+    for segments in all_segments_both:
+        for segment in segments:
+            if len(segment) > max_length:
+                segment = segment[:max_length]  # Trim longer segments
+            time_subset = time_axis[:len(segment)]
+            x_values_both.extend(time_subset)
+            y_values_both.extend(segment)
     
-    plt.colorbar(axes[0].collections[0], ax=axes[0], label="Density of Measurements")
-    plt.colorbar(axes[1].collections[0], ax=axes[1], label="Density of Measurements")
-    
+    # x_values_ch1 = np.array(x_values_ch1)
+    # y_values_ch1 = np.array(y_values_ch1)
+    # x_values_ch2 = np.array(x_values_ch2)
+    # y_values_ch2 = np.array(y_values_ch2)
+
+    x_values_both = np.array(x_values_both)
+    y_values_both = np.array(y_values_both)
+
+    plt.figure(figsize=(12, 6))
+
+    # Create a hexbin plot using the combined data
+    hb = plt.hexbin(x_values_both, y_values_both, gridsize=100, cmap='Reds', mincnt=1)
+
+    plt.title("Training Data (CH0 and CH1)")
+    plt.xlabel("Time (minutes relative to the start of heating)")
+    plt.ylabel("EDP [scaled]")
+
+    # Add a vertical line at time zero to indicate the start of Heating
+    plt.axvline(0, color='blue', linestyle='--', label="Start of Heating")
+
+    plt.legend(loc="lower left")
+    plt.colorbar(hb, label="Count of Data Points per Hexagon")
     plt.tight_layout()
     plt.show()
+    
+    # # Create subplots for CH1 and CH2
+    # fig, axes = plt.subplots(2, 1, figsize=(12, 12))
+
+    # # yticks = [-3000, -2000, -1000, 0, 1000, 2000, 3000]
+    # # ytick_labels = ["-3000", "-2000", "-1000", "0", "1000", "2000", "3000"]
+    
+    # axes[0].hexbin(x_values_ch1, y_values_ch1, gridsize=50, cmap='Reds', mincnt=1)
+    # axes[0].set_title("Training Data Ch0")
+    # axes[0].set_xlabel("Time (minutes relative to Increasing start)")
+    # axes[0].set_ylabel("Scaled Electrical Potential (mV)")
+    # # axes[0].set_ylim([-3000, 3000])
+    # #axes[0].set_yticks(yticks)
+    # #axes[0].set_yticklabels(ytick_labels)
+    # axes[0].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
+    # axes[0].legend()
+    
+    # axes[1].hexbin(x_values_ch2, y_values_ch2, gridsize=50, cmap='Blues', mincnt=1)
+    # axes[1].set_title("Training Data Ch1")
+    # axes[1].set_xlabel("Time (minutes relative to Increasing start)")
+    # axes[1].set_ylabel("Scaled Electrical Potential (mV)")
+    # # axes[1].set_ylim([-3000, 3000])
+    # #axes[1].set_yticks(yticks)
+    # #axes[1].set_yticklabels(ytick_labels)
+    # axes[1].axvline(0, color='blue', linestyle='--', label="Start of Increasing")
+    # axes[1].legend()
+    
+    # plt.colorbar(axes[0].collections[0], ax=axes[0], label="Density of Measurements")
+    # plt.colorbar(axes[1].collections[0], ax=axes[1], label="Density of Measurements")
+    
+    # plt.tight_layout()
+    # plt.show()

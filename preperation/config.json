@@ -96,5 +96,26 @@
       "before": 30,
       "after": 30,
       "split_minutes": 10
+    },
+    {
+      "data_dir": "/home/chris/experiment_data/9_2025_02_12-2025_02_20",
+      "prefix": "P3",
+      "before": 30,
+      "after": 30,
+      "split_minutes": 10
+    },
+    {
+      "data_dir": "/home/chris/experiment_data/9_2025_02_12-2025_02_20",
+      "prefix": "P5",
+      "before": 30,
+      "after": 30,
+      "split_minutes": 10
+    },
+    {
+      "data_dir": "/home/chris/experiment_data/10_2025_02_20-2025_02_27",
+      "prefix": "P3",
+      "before": 30,
+      "after": 30,
+      "split_minutes": 10
     }
   ]  

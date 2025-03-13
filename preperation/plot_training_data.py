@@ -2,10 +2,43 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import json
 import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
+
+# Use the PGF backend
+# matplotlib.use("pgf")
+
+# # Update rcParams
+# plt.rcParams.update({
+#     "pgf.texsystem": "xelatex",  # Use XeLaTeX
+#     "font.family": "sans-serif",  # Use a sans-serif font
+#     "font.sans-serif": ["Arial"],  # Specifically use Arial
+#     "font.size": 10,  # Set the font size
+#     "text.usetex": True,  # Use LaTeX for text rendering
+#     "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
+# })
+
+def z_score_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
+    """
+    Apply Z-Score normalization to a given data slice.
+
+    Args:
+        data_slice (np.ndarray): The input array to normalize.
+        factor (float): Scaling factor to adjust the normalized values (default is 1.0).
+
+    Returns:
+        np.ndarray: The Z-score normalized array.
+    """
+    mean = np.mean(data_slice)
+    std = np.std(data_slice)
+
+    if std == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero
+
+    return ((data_slice - mean) / std) * factor
 
 def min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
     """
@@ -29,6 +62,29 @@ def min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray
 
     normalized = (data_slice - min_val) / range_val
     return normalized * factor
+
+def adjusted_min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
+    """
+    Apply Min-Max normalization to a given data slice.
+
+    The normalization transforms the data into the range [0, factor].
+
+    Args:
+        data_slice (np.ndarray): The input array to normalize.
+        factor (float): Scaling factor to adjust the normalized values (default is 1.0).
+
+    Returns:
+        np.ndarray: The min-max normalized array.
+    """
+    min_val = data_slice.min()
+    max_val = data_slice.max()
+    range_val = (max_val/factor) - (min_val/factor)
+
+    if range_val == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero if all values are the same
+
+    normalized = (data_slice - (min_val/factor)) / range_val
+    return normalized
 
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
@@ -69,12 +125,16 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
         if not segment.empty:
             # Normalize CH1
             ch1_values = segment['CH1_smoothed'].values
-            ch1_values = min_max_normalize(ch1_values,1000)
+            #ch1_values = min_max_normalize(ch1_values,1000)
+            ch1_values = adjusted_min_max_normalize(ch1_values,1000)
+            #ch1_values = z_score_normalize(ch1_values,1000)
             #ch1_values = ch1_values - ch1_values[0]  # Subtract the first value
 
             # Normalize CH2 (if needed)
             ch2_values = segment['CH2_smoothed'].values
-            ch2_values = min_max_normalize(ch2_values,1000)
+            #ch2_values = min_max_normalize(ch2_values,1000)
+            ch2_values = adjusted_min_max_normalize(ch2_values,1000)
+            #ch2_values = z_score_normalize(ch2_values,1000)
             #ch2_values = ch2_values - ch2_values[0]  # Subtract the first value
 
             # segments_ch1.append(ch1_values)
@@ -185,25 +245,29 @@ if __name__ == "__main__":
     # x_values_ch2 = np.array(x_values_ch2)
     # y_values_ch2 = np.array(y_values_ch2)
 
+
+
     x_values_both = np.array(x_values_both)
     y_values_both = np.array(y_values_both)
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(5.90666,4))
 
     # Create a hexbin plot using the combined data
-    hb = plt.hexbin(x_values_both, y_values_both, gridsize=100, cmap='Reds', mincnt=1)
+    hb = plt.hexbin(x_values_both, y_values_both, gridsize=50, cmap='Reds', mincnt=1)
 
-    plt.title("Training Data (CH0 and CH1)")
-    plt.xlabel("Time (minutes relative to the start of heating)")
-    plt.ylabel("EDP [scaled]")
+    plt.title("Training Data (CH0 and CH1)", fontsize=10)
+    plt.xlabel("Time (minutes relative to the start of heating)", fontsize=10)
+    plt.ylabel("EDP [scaled]", fontsize=10)
 
     # Add a vertical line at time zero to indicate the start of Heating
     plt.axvline(0, color='blue', linestyle='--', label="Start of Heating")
 
-    plt.legend(loc="lower left")
+    plt.legend(loc="lower left", fontsize=8)
     plt.colorbar(hb, label="Count of Data Points per Hexagon")
     plt.tight_layout()
     plt.show()
+    #plt.savefig("heatMapTrainingDataBothChannels.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+
     
     # # Create subplots for CH1 and CH2
     # fig, axes = plt.subplots(2, 1, figsize=(12, 12))

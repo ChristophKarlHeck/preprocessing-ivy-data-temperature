@@ -132,10 +132,10 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
         segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed', 'CH2_smoothed']]
         segment_ch1 = segment['CH1_smoothed'].values
-        segment_ch1 = min_max_normalize(segment_ch1,1)
+        segment_ch1 = min_max_normalize(segment_ch1,1000)
         segments_ch1.append(segment_ch1)
         segment_ch2 = segment['CH2_smoothed'].values
-        segment_ch2 = min_max_normalize(segment_ch2,1)
+        segment_ch2 = min_max_normalize(segment_ch2,1000)
         segments_ch2.append(segment_ch2)
         segments_datetime.append(segment['datetime'].values)
 

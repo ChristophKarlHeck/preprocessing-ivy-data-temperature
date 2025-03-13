@@ -10,3 +10,7 @@ python3 annotating_only_temp.py --data_dir "/home/chris/experiment_data/11_2025_
 ```bash
 python3 check_classification.py --data_dir "/home/chris/experiment_data/11_2025_02_27-2025_03_04" --prefix C1 --from_date 2025-02-27 --until_date 2025-03-04
 ```
+
+```bash
+python plot_precision.py --data-dir "/home/chris/experiment_data/10_2025_02_20-2025_02_27" --file "threshold_engineering_C1.csv"
+```

@@ -10,9 +10,9 @@ for threshold in $(seq 0 0.01 1); do
     echo "Running with threshold: $threshold_formatted"
     python3 check_classification.py \
         --data_dir "/home/chris/experiment_data/11_2025_02_27-2025_03_04" \
-        --prefix C1 \
+        --prefix C2 \
         --from_date "2025-02-27 07:00" \
         --until_date "2025-03-04 19:30" \
         --threshold "$threshold_formatted" \
-        --plant_id 518
+        --plant_id 525
 done

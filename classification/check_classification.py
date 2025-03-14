@@ -392,18 +392,18 @@ def main():
 
 
     precision_heat = correct_heat_count/(correct_heat_count + false_heat_count)
-    precision_not_heat = correct_not_heat_count/(correct_not_heat_count + false_not_heat_count)
+    recall_heat = correct_heat_count/(correct_heat_count + false_not_heat_count)
 
 
     # Print the result
     print(f"Preceision Heat: {precision_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_heat_count})")
-    print(f"Reall Heat: {precision_not_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_not_heat_count})")
+    print(f"Reall Heat: {recall_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_not_heat_count})")
 
     # Prepare a dictionary with the results
     results = {
         'threshold': threshold,
         'precision_heat': precision_heat,
-        'recall_heat': precision_not_heat
+        'recall_heat': recall_heat
     }
 
     # Specify the CSV file name

@@ -19,7 +19,7 @@ def main():
     # Plotting the precision curves
     plt.figure(figsize=(10, 6))
     plt.plot(df['threshold'], df['precision_heat'], marker='o', label='Precision Heat')
-    plt.plot(df['threshold'], df['precision_not_heat'], marker='o', label='Precision Not Heat')
+    plt.plot(df['threshold'], df['recall_heat'], marker='o', label='Recall Heat')
     
     plt.xlabel('Threshold')
     plt.ylabel('Precision')

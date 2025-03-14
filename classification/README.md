@@ -8,7 +8,7 @@ python3 annotating_only_temp.py --data_dir "/home/chris/experiment_data/11_2025_
 ```
 
 ```bash
-python3 check_classification.py --data_dir "/home/chris/experiment_data/11_2025_02_27-2025_03_04" --prefix C1 --from_date 2025-02-27 --until_date 2025-03-04
+python3 check_classification.py --data_dir /home/chris/experiment_data/13_2025_03_11-2025_03_14 --prefix C1 --from_date "2025-03-11 10:00" --until_date "2025-03-15 16:00" --threshold 0.7 --plant_id 3
 ```
 
 ```bash

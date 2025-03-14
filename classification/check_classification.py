@@ -397,17 +397,17 @@ def main():
 
     # Print the result
     print(f"Preceision Heat: {precision_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_heat_count})")
-    print(f"Preceision Not Heat: {precision_not_heat:.4f}={correct_not_heat_count}/({correct_not_heat_count} + {false_not_heat_count})")
+    print(f"Reall Heat: {precision_not_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_not_heat_count})")
 
     # Prepare a dictionary with the results
     results = {
         'threshold': threshold,
         'precision_heat': precision_heat,
-        'precision_not_heat': precision_not_heat
+        'recall_heat': precision_not_heat
     }
 
     # Specify the CSV file name
-    csv_file = f"{data_dir}/threshold_engineering_{prefix}.csv"
+    csv_file = f"{data_dir}/threshold_engineering_precision_recall_{prefix}.csv"
 
     # Check if the CSV file exists; if not, we will write the header
     file_exists = os.path.isfile(csv_file)

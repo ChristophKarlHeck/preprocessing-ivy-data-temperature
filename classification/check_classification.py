@@ -302,9 +302,9 @@ def main():
     df_classified['VoltagesCh1'] = df_classified['VoltagesCh1NotScaled'].apply(lambda x: np.array(eval(x)))
 
     # Z-Score
-    faktor = 1000
-    df_classified['VoltagesCh0'] = df_classified['VoltagesCh0'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
-    df_classified['VoltagesCh1'] = df_classified['VoltagesCh1'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
+    # faktor = 1000
+    # df_classified['VoltagesCh0'] = df_classified['VoltagesCh0'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
+    # df_classified['VoltagesCh1'] = df_classified['VoltagesCh1'].apply(lambda arr: faktor * ((arr - np.mean(arr)) / np.std(arr)) if np.std(arr) != 0 else arr)
 
 
     # Extract the last voltage value for both channels
@@ -322,8 +322,8 @@ def main():
     # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
     num_rows = len(df_input_nn)
     print("Number of data points:", num_rows)
-    # min_max_scale_column(df_input_nn, "LastVoltageCh0")
-    # min_max_scale_column(df_input_nn, "LastVoltageCh1")
+    min_max_scale_column(df_input_nn, "LastVoltageCh0")
+    min_max_scale_column(df_input_nn, "LastVoltageCh1")
     df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size, min_periods=1).mean()
     df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size, min_periods=1).mean()
     # df_input_nn = df_input_nn.set_index("datetime", drop=False)
@@ -363,61 +363,76 @@ def main():
     # Save and Plot
     os.makedirs(preprocessed_dir, exist_ok=True)
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    #plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
+    plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
+
+
+    df_output = pd.DataFrame({
+    "datetime": df_merged["datetime"],
+    "ground_truth": df_merged["phase"].apply(lambda x: 1 if x in ["Increasing", "Holding"] else 0),
+    "input_not_normalized_ch0": df_merged['VoltagesCh0'],
+    "input_not_normalized_ch1": df_merged['VoltagesCh1'],
+    })
+
+    csv_file = f"{data_dir}/classification/input_not_normalized_{prefix}.csv"
+    parent = os.path.dirname(csv_file)
+
+    # Create the 'metrics' directory if it does not exist
+    os.makedirs(parent, exist_ok=True)
+
+    # Save the CSV file
+    df_output.to_csv(csv_file, index=False)
 
 
 
+    # # Define correct classification cases
+    # correct_cases_heat = (
+    #     ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Increasing", "Holding"]))
+    # )
+    # correct_heat_count = correct_cases_heat.sum()
+
+    # false_cases_heat = (
+    #     ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
+    # )
+    # false_heat_count = false_cases_heat.sum()
+
+    # correct_cases_not_heat = (
+    #     ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
+    # )
+    # correct_not_heat_count = correct_cases_not_heat.sum()
+
+    # false_cases_not_heat = (
+    #     ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Increasing", "Holding"]))
+    # )
+    # false_not_heat_count = false_cases_not_heat.sum()
 
 
-    # Define correct classification cases
-    correct_cases_heat = (
-        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Increasing", "Holding"]))
-    )
-    correct_heat_count = correct_cases_heat.sum()
-
-    false_cases_heat = (
-        ((df_merged["final_classification_heat"] == 1) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
-    )
-    false_heat_count = false_cases_heat.sum()
-
-    correct_cases_not_heat = (
-        ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Decreasing", "Nothing"]))
-    )
-    correct_not_heat_count = correct_cases_not_heat.sum()
-
-    false_cases_not_heat = (
-        ((df_merged["final_classification_heat"] == 0) & df_merged["phase"].isin(["Increasing", "Holding"]))
-    )
-    false_not_heat_count = false_cases_not_heat.sum()
+    # precision_heat = correct_heat_count/(correct_heat_count + false_heat_count)
+    # recall_heat = correct_heat_count/(correct_heat_count + false_not_heat_count)
 
 
-    precision_heat = correct_heat_count/(correct_heat_count + false_heat_count)
-    recall_heat = correct_heat_count/(correct_heat_count + false_not_heat_count)
+    # # Print the result
+    # print(f"Preceision Heat: {precision_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_heat_count})")
+    # print(f"Reall Heat: {recall_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_not_heat_count})")
 
+    # # Prepare a dictionary with the results
+    # results = {
+    #     'threshold': threshold,
+    #     'precision_heat': precision_heat,
+    #     'recall_heat': recall_heat
+    # }
 
-    # Print the result
-    print(f"Preceision Heat: {precision_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_heat_count})")
-    print(f"Reall Heat: {recall_heat:.4f}={correct_heat_count}/({correct_heat_count} + {false_not_heat_count})")
+    # # Specify the CSV file name
+    # csv_file = f"{data_dir}/threshold_engineering_precision_recall_{prefix}.csv"
 
-    # Prepare a dictionary with the results
-    results = {
-        'threshold': threshold,
-        'precision_heat': precision_heat,
-        'recall_heat': recall_heat
-    }
+    # # Check if the CSV file exists; if not, we will write the header
+    # file_exists = os.path.isfile(csv_file)
 
-    # Specify the CSV file name
-    csv_file = f"{data_dir}/threshold_engineering_precision_recall_{prefix}.csv"
-
-    # Check if the CSV file exists; if not, we will write the header
-    file_exists = os.path.isfile(csv_file)
-
-    # Append the data to the CSV file
-    with open(csv_file, mode='a', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=results.keys())
-        if not file_exists:
-            writer.writeheader()  # Write header only once
-        writer.writerow(results)
+    # # Append the data to the CSV file
+    # with open(csv_file, mode='a', newline='') as file:
+    #     writer = csv.DictWriter(file, fieldnames=results.keys())
+    #     if not file_exists:
+    #         writer.writeheader()  # Write header only once
+    #     writer.writerow(results)
 
 
 

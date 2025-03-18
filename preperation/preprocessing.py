@@ -22,9 +22,9 @@ CONFIG = {
     "GAIN": 4.0,
     "WINDOW_SIZE": 5,
     "RESAMPLE_RATE": "1s",
-    "MIN_VALUE": -200,
-    "MAX_VALUE": 200,
-    "FACTOR": 1000,
+    "MIN_VALUE": -0.2,
+    "MAX_VALUE": 0.2,
+    "FACTOR": 1,
 }
 
 # Initialize the console
@@ -223,10 +223,10 @@ def main():
     df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
     df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
     df_phyto["CH2_smoothed"] = df_phyto["CH2_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
-    # scale_column(df_phyto, "CH1_smoothed")
-    # scale_column(df_phyto, "CH2_smoothed")
-    z_score_column(df_phyto, "CH1_smoothed")
-    z_score_column(df_phyto, "CH2_smoothed")
+    scale_column(df_phyto, "CH1_smoothed")
+    scale_column(df_phyto, "CH2_smoothed")
+    # z_score_column(df_phyto, "CH1_smoothed")
+    # z_score_column(df_phyto, "CH2_smoothed")
 
     # Process Temperature Node
     temp_files = discover_files(data_dir, "P6")

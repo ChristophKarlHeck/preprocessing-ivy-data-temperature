@@ -369,8 +369,8 @@ def main():
     df_output = pd.DataFrame({
     "datetime": df_merged["datetime"],
     "ground_truth": df_merged["phase"].apply(lambda x: 1 if x in ["Increasing", "Holding"] else 0),
-    "input_not_normalized_ch0": df_merged['VoltagesCh0'],
-    "input_not_normalized_ch1": df_merged['VoltagesCh1'],
+    "input_not_normalized_ch0": df_merged["VoltagesCh0"].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x),
+    "input_not_normalized_ch1": df_merged["VoltagesCh1"].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x),
     })
 
     csv_file = f"{data_dir}/classification/input_not_normalized_{prefix}.csv"

@@ -126,15 +126,15 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             # Normalize CH1
             ch1_values = segment['CH1_smoothed'].values
             #ch1_values = min_max_normalize(ch1_values,1000)
-            ch1_values = adjusted_min_max_normalize(ch1_values,1000)
-            #ch1_values = z_score_normalize(ch1_values,1000)
+            #ch1_values = adjusted_min_max_normalize(ch1_values,1000)
+            ch1_values = z_score_normalize(ch1_values,1000)
             #ch1_values = ch1_values - ch1_values[0]  # Subtract the first value
 
             # Normalize CH2 (if needed)
             ch2_values = segment['CH2_smoothed'].values
             #ch2_values = min_max_normalize(ch2_values,1000)
-            ch2_values = adjusted_min_max_normalize(ch2_values,1000)
-            #ch2_values = z_score_normalize(ch2_values,1000)
+            #ch2_values = adjusted_min_max_normalize(ch2_values,1000)
+            ch2_values = z_score_normalize(ch2_values,1000)
             #ch2_values = ch2_values - ch2_values[0]  # Subtract the first value
 
             # segments_ch1.append(ch1_values)

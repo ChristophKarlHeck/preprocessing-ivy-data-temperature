@@ -112,18 +112,18 @@ def extract_data(data_dir, prefix, before, after):
         row_ch0 = {
                 'Channel': 0,
                 'Heat': 0,
-                'Input': input_ch0,
-                'datetime': init_datetime
+                'Datetime': init_datetime
             }
+        row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
         results.append(row_ch0)
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed'][0:1800].values)
         row_ch1 = {
                 'Channel': 1,
                 'Heat': 0,
-                'Input': input_ch1,
-                'datetime': init_datetime
+                'Datetime': init_datetime
             }
+        row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
         results.append(row_ch1)
 
         segment_after_1800 = segment.iloc[1800:]
@@ -141,19 +141,22 @@ def extract_data(data_dir, prefix, before, after):
             input_ch0 = np.append(input_ch0[1:], mean_ch0)
             input_ch1 = np.append(input_ch1[1:], mean_ch1)
 
-            results.append({
+            row_ch0 = {
                 'Channel': 0,
                 'Heat': heat_flag,
                 'Input': input_ch0,
-                'datetime': avg_datetime
-            })
-
-            results.append({
+                'Datetime': avg_datetime
+            }
+            row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
+            results.append(row_ch0)
+            
+            row_ch1 = {
                 'Channel': 1,
                 'Heat': heat_flag,
-                'Input': input_ch1,
-                'datetime': avg_datetime
-            })
+                'Datetime': avg_datetime
+            }
+            row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
+            results.append(row_ch1)
             
     df_results = pd.DataFrame(results)
 
@@ -163,7 +166,7 @@ def extract_data(data_dir, prefix, before, after):
     # Create a scatter plot showing the heat classification over time.
     plt.figure(figsize=(12, 6))
     # We'll plot 1 for heat and 0 for not heat; using different colors.
-    plt.scatter(df_channel0['datetime'], df_channel0['Heat'], 
+    plt.scatter(df_channel0['Datetime'], df_channel0['Heat'], 
                 c=df_channel0['Heat'], cmap='coolwarm', marker='o')
     plt.xlabel("Datetime")
     plt.ylabel("Heat Classification (0 = Not Heat, 1 = Heat)")
@@ -183,7 +186,7 @@ def extract_data(data_dir, prefix, before, after):
     df_heat1_balanced = df_heat1.sample(n=n_min, random_state=42)
 
     # Combine the balanced classes.
-    df_balanced = pd.concat([df_heat0_balanced, df_heat1_balanced]).sort_values('datetime').reset_index(drop=True)
+    df_balanced = pd.concat([df_heat0_balanced, df_heat1_balanced]).sort_values('Datetime').reset_index(drop=True)
 
     counts_original = df_results['Heat'].value_counts().sort_index()
     # Count classes in the balanced dataset

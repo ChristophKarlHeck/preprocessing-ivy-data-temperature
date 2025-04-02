@@ -20,7 +20,7 @@ CONFIG = {
     "DATABITS": 8388608,
     "VREF": 2.5,
     "GAIN": 4.0,
-    "WINDOW_SIZE": 5,
+    "WINDOW_SIZE": 6,
     "RESAMPLE_RATE": "1s",
     "MIN_VALUE": -0.2,
     "MAX_VALUE": 0.2,

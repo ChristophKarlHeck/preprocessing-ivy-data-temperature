@@ -26,7 +26,7 @@ def downsample6to1(data):
 def extract_data(data_dir, prefix, before, after):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed/{prefix}_preprocessed.csv")
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_wrong/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -144,7 +144,6 @@ def extract_data(data_dir, prefix, before, after):
             row_ch0 = {
                 'Channel': 0,
                 'Heat': heat_flag,
-                'Input': input_ch0,
                 'Datetime': avg_datetime
             }
             row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})

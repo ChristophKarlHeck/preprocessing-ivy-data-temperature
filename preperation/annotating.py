@@ -9,13 +9,13 @@ from datetime import timedelta, datetime
 
 # Constants
 CONFIG = {
-    "window_length": 1201,                  # Must be odd and smaller than the dataset size
+    "window_length": 600,                  # Must be odd and smaller than the dataset size
     "polyorder": 4,                         # Polynomial order for fitting
-    "quantile_increase": 0.88,              # 88th percentile
+    "quantile_increase": 0.94,              # 88th percentile
     "quantile_decrease": 0.12,              # 12th percentile
     "temperature_deviation_holding": 0.5,   # 0.5 °C
     "time_window_holding": 60,              # 1h
-    "min_block_size_normalization": 600,    # 10 min
+    "min_block_size_normalization": 300,    # 10 min
     "minimum_distance_between_peaks": 5400,  # 1.5h
     "number_of_peaks": 5
 }
@@ -204,7 +204,8 @@ def main():
 
     # Prompt user to enter start and end dates
     start_date = temp_df['datetime'].min().date()
-    end_date = temp_df['datetime'].max().date()
+    end_date = pd.to_datetime("2025-02-06", format="%Y-%m-%d").date()
+    #end_date = temp_df['datetime'].max().date()
 
     current_date = start_date
 

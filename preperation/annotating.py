@@ -204,8 +204,8 @@ def main():
 
     # Prompt user to enter start and end dates
     start_date = temp_df['datetime'].min().date()
-    end_date = pd.to_datetime("2025-02-06", format="%Y-%m-%d").date()
-    #end_date = temp_df['datetime'].max().date()
+    #end_date = pd.to_datetime("2025-02-06", format="%Y-%m-%d").date()
+    end_date = temp_df['datetime'].max().date()
 
     current_date = start_date
 

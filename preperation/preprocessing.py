@@ -103,26 +103,9 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
         column (str): Column to scale.
     """
     console.print(f"[bold magenta]Scaling column '{column}' using Min-Max Scaling...[/bold magenta]")
-    df[f"{column}_scaled"] = ((df[column] - CONFIG["MIN_VALUE"]) / (
-        CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]) * CONFIG["FACTOR"]
+    df[f"{column}_scaled"] = ((df[column] + 0.2) / (
+        0.4) * CONFIG["FACTOR"]
     )
-
-def z_score_column(df: pd.DataFrame, column: str) -> None:
-    """
-    Scale a column using Z-score normalization (standardization).
-    
-    Args:
-        df (pd.DataFrame): DataFrame containing the column.
-        column (str): Column to scale.
-    """
-    console.print(f"[bold cyan]Scaling column '{column}' using Z-Score Normalization...[/bold cyan]")
-
-    mean = df[column].mean()
-    std = df[column].std()
-
-    # Apply Z-score formula
-    df[f"{column}_scaled"] = ((df[column] - mean) / std) * CONFIG["FACTOR"]
-
 
 def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_dir: str) -> None:
     """
@@ -223,10 +206,10 @@ def main():
     df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
     df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
     df_phyto["CH2_smoothed"] = df_phyto["CH2_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
-    scale_column(df_phyto, "CH1_smoothed")
-    scale_column(df_phyto, "CH2_smoothed")
-    # z_score_column(df_phyto, "CH1_smoothed")
-    # z_score_column(df_phyto, "CH2_smoothed")
+    #scale_column(df_phyto, "CH1_smoothed")
+    #scale_column(df_phyto, "CH2_smoothed")
+    df_phyto["CH1_smoothed_scaled"] = df_phyto["CH1_smoothed"]
+    df_phyto["CH2_smoothed_scaled"] = df_phyto["CH2_smoothed"]
 
     # Process Temperature Node
     temp_files = discover_files(data_dir, "P6")
@@ -238,12 +221,12 @@ def main():
     df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
 
     # Save and Plot
-    preprocessed_dir = os.path.join(data_dir, "preprocessed")
+    preprocessed_dir = os.path.join(data_dir, "preprocessed_none")
     os.makedirs(preprocessed_dir, exist_ok=True)
     df_phyto.to_csv(os.path.join(preprocessed_dir, f"{prefix}_preprocessed.csv"))
     df_temp.to_csv(os.path.join(preprocessed_dir, "temperature_preprocessed.csv"))
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    plot_data(df_phyto, df_temp, prefix, preprocessed_dir)
+    #plot_data(df_phyto, df_temp, prefix, preprocessed_dir)
 
 
 if __name__ == "__main__":

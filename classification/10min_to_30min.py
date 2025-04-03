@@ -1,7 +1,6 @@
 import argparse
 import ast
 import os
-import re
 import pandas as pd
 
 def slide_window(current_window, new_row_last_value):
@@ -89,19 +88,21 @@ def main():
 
     result_df = pd.DataFrame(result)
     input_dir = os.path.dirname(args.file)
+    # Split input_dir into its parent and the last folder name.
+    parent_dir, last_folder = os.path.split(input_dir)
+    # Append "_30min" to the last folder.
+    new_folder = last_folder + "_30min"
+    # Build the new output directory path.
+    output_dir = os.path.join(parent_dir, new_folder)
+
+    # Create the directory if it doesn't exist.
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build the output file path using the same file name.
     file_name = os.path.basename(args.file)
-
-    print(file_name)
-    match = re.search(r'_(C[12])', file_name)
-    channel = None
-    if match:
-        channel = match.group(1)
-        print("Extracted channel:", channel)
-    else:
-        print("Channel not found in the filename.")
-
-    output_path = os.path.join(input_dir, f"input_not_normalized_{channel}_30min.csv")
+    output_path = os.path.join(output_dir, file_name)
     result_df.to_csv(output_path, index=False)
+    print(f"Output written to {output_path}")
 
     
 

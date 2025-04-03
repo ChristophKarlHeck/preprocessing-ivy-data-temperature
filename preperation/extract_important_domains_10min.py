@@ -114,7 +114,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': 0,
                 'Datetime': init_datetime
             }
-        row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
+        row_ch0.update({f'val_{z}': input_ch0[z] for z in range(len(input_ch0))})
         results.append(row_ch0)
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed'][0:600].values)
@@ -123,14 +123,14 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': 0,
                 'Datetime': init_datetime
             }
-        row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
+        row_ch1.update({f'val_{z}': input_ch1[z] for z in range(len(input_ch1))})
         results.append(row_ch1)
 
-        segment_after_1800 = segment.iloc[600:]
-        n_groups = len(segment_after_1800) // 6  # Only process complete groups of 6 rows.
+        segment_after_600 = segment.iloc[600:]
+        n_groups = len(segment_after_600) // 6  # Only process complete groups of 6 rows.
         
         for i in range(n_groups):
-            group = segment_after_1800.iloc[i*6:(i+1)*6]
+            group = segment_after_600.iloc[i*6:(i+1)*6]
             heat_flag = 1 if group['phase'].isin(['Increasing', 'Holding']).any() else 0
             mean_ch0 = group['CH1_smoothed'].mean()
             mean_ch1 = group['CH2_smoothed'].mean()
@@ -146,7 +146,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': heat_flag,
                 'Datetime': avg_datetime
             }
-            row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
+            row_ch0.update({f'val_{f}': input_ch0[f] for f in range(len(input_ch0))})
             results.append(row_ch0)
             
             row_ch1 = {
@@ -154,7 +154,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': heat_flag,
                 'Datetime': avg_datetime
             }
-            row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
+            row_ch1.update({f'val_{k}': input_ch1[k] for k in range(len(input_ch1))})
             results.append(row_ch1)
             
     df_results = pd.DataFrame(results)

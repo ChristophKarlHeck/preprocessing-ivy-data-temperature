@@ -26,7 +26,7 @@ def downsample6to1(data):
 def extract_data(data_dir, prefix, before, after):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_wrong/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_wrong/{prefix}_preprocessed.csv") # CHANGE HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -114,7 +114,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': 0,
                 'Datetime': init_datetime
             }
-        row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
+        row_ch0.update({f'val_{z}': input_ch0[z] for z in range(len(input_ch0))})
         results.append(row_ch0)
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed'][0:1800].values)
@@ -123,7 +123,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': 0,
                 'Datetime': init_datetime
             }
-        row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
+        row_ch1.update({f'val_{z}': input_ch1[z] for z in range(len(input_ch1))})
         results.append(row_ch1)
 
         segment_after_1800 = segment.iloc[1800:]
@@ -146,7 +146,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': heat_flag,
                 'Datetime': avg_datetime
             }
-            row_ch0.update({f'val_{i}': input_ch0[i] for i in range(len(input_ch0))})
+            row_ch0.update({f'val_{j}': input_ch0[j] for j in range(len(input_ch0))})
             results.append(row_ch0)
             
             row_ch1 = {
@@ -154,7 +154,7 @@ def extract_data(data_dir, prefix, before, after):
                 'Heat': heat_flag,
                 'Datetime': avg_datetime
             }
-            row_ch1.update({f'val_{i}': input_ch1[i] for i in range(len(input_ch1))})
+            row_ch1.update({f'val_{j}': input_ch1[j] for j in range(len(input_ch1))})
             results.append(row_ch1)
             
     df_results = pd.DataFrame(results)

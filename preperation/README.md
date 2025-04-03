@@ -23,8 +23,16 @@ python3 extract_important_domains.py --data_dir /home/chris/experiment_data/7_20
 ## Utils
 Only for exceptions
 
-# 30 min
+# Different Training
+
+## 30 min
 
 ```bash
 python3 extract_important_domains_30min.py --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --prefix "P3" --before 90 --after 60
+```
+
+## 10 min
+
+```bash
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --prefix "P3" --before 90 --after 60
 ```

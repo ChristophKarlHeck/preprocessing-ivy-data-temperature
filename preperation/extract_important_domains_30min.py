@@ -26,7 +26,7 @@ def downsample6to1(data):
 def extract_data(data_dir, prefix, before, after):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_wrong/{prefix}_preprocessed.csv") # CHANGE HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_min_max_scaling/{prefix}_preprocessed.csv") # CHANGE HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -54,14 +54,14 @@ def extract_data(data_dir, prefix, before, after):
     fig, axes = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
     
     # Plot CH1
-    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed'], color='black', label='CH1')
+    axes[0].plot(merged_data['datetime'], merged_data['CH1_smoothed_scaled'], color='black', label='CH1')
     axes[0].set_title('CH1 Signal')
     axes[0].set_ylabel('Preprocessed Data')
     axes[0].grid()
     axes[0].legend()
     
     # Plot CH2
-    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed'], color='black', label='CH2')
+    axes[1].plot(merged_data['datetime'], merged_data['CH2_smoothed_scaled'], color='black', label='CH2')
     axes[1].set_title('CH2 Signal')
     axes[1].set_ylabel('Preprocessed Data')
     axes[1].grid()
@@ -105,9 +105,9 @@ def extract_data(data_dir, prefix, before, after):
     results = []
     for start_time in distinct_increasing_starts:
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
-        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed', 'CH2_smoothed', "phase"]]
+        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled', "phase"]]
 
-        input_ch0 = downsample_by_mean(segment['CH1_smoothed'][0:1800].values)
+        input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:1800].values)
         init_datetime = segment['datetime'].iloc[1799]
         row_ch0 = {
                 'Channel': 0,
@@ -117,7 +117,7 @@ def extract_data(data_dir, prefix, before, after):
         row_ch0.update({f'val_{z}': input_ch0[z] for z in range(len(input_ch0))})
         results.append(row_ch0)
 
-        input_ch1 = downsample_by_mean(segment['CH2_smoothed'][0:1800].values)
+        input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:1800].values)
         row_ch1 = {
                 'Channel': 1,
                 'Heat': 0,
@@ -132,8 +132,8 @@ def extract_data(data_dir, prefix, before, after):
         for i in range(n_groups):
             group = segment_after_1800.iloc[i*6:(i+1)*6]
             heat_flag = 1 if group['phase'].isin(['Increasing', 'Holding']).any() else 0
-            mean_ch0 = group['CH1_smoothed'].mean()
-            mean_ch1 = group['CH2_smoothed'].mean()
+            mean_ch0 = group['CH1_smoothed_scaled'].mean()
+            mean_ch1 = group['CH2_smoothed_scaled'].mean()
 
             avg_ns = group['datetime'].astype(np.int64).mean()
             avg_datetime = pd.to_datetime(avg_ns)

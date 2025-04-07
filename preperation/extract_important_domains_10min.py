@@ -4,24 +4,25 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def z_score_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
-    """
-    Apply Z-Score normalization to a given data slice.
+def z_score_normalize(data_slice: np.ndarray) -> np.ndarray:
 
-    Args:
-        data_slice (np.ndarray): The input array to normalize.
-        factor (float): Scaling factor to adjust the normalized values (default is 1.0).
-
-    Returns:
-        np.ndarray: The Z-score normalized array.
-    """
     mean = np.mean(data_slice)
     std = np.std(data_slice)
-
+    
+    # Create an output array with the same shape as the input
+    result = np.empty_like(data_slice, dtype=float)
+    
+    # Avoid division by zero if standard deviation is zero
     if std == 0:
-        return np.zeros_like(data_slice)  # Avoid division by zero
+        result.fill(0.0)
+        return result
 
-    return ((data_slice - mean) / std) * factor
+    # Explicitly iterate over each element in the array
+    for i in range(len(data_slice)):
+        result[i] = ((data_slice[i] - mean) / std) * 1000
+    
+    return result
+
 
 def downsample_by_mean(data):
     data = np.array(data)
@@ -127,7 +128,7 @@ def extract_data(data_dir, prefix, before, after):
         segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled', "phase"]]
 
         input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:600].values)
-        input_ch0 = z_score_normalize(input_ch0, 1000)
+        input_ch0 = z_score_normalize(input_ch0)
         init_datetime = segment['datetime'].iloc[599]
         row_ch0 = {
                 'Channel': 0,
@@ -138,7 +139,7 @@ def extract_data(data_dir, prefix, before, after):
         results.append(row_ch0)
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:600].values)
-        input_ch1 = z_score_normalize(input_ch1, 1000)
+        input_ch1 = z_score_normalize(input_ch1)
         row_ch1 = {
                 'Channel': 1,
                 'Heat': 0,
@@ -161,8 +162,8 @@ def extract_data(data_dir, prefix, before, after):
 
             input_ch0 = np.append(input_ch0[1:], mean_ch0)
             input_ch1 = np.append(input_ch1[1:], mean_ch1)
-            input_ch0 = z_score_normalize(input_ch0, 1000)
-            input_ch1 = z_score_normalize(input_ch1, 1000)
+            input_ch0 = z_score_normalize(input_ch0)
+            input_ch1 = z_score_normalize(input_ch1)
 
             row_ch0 = {
                 'Channel': 0,

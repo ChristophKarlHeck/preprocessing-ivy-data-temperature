@@ -239,7 +239,7 @@ def extract_data(data_dir, prefix, before, after):
     output_dir = os.path.join(data_dir, "training_data")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
-    df_results.to_csv(output_path, index=False)
+    df_balanced.to_csv(output_path, index=False)
 
     print(df_results.describe())
 

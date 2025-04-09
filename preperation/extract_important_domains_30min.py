@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def z_score_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray:
+def z_score_normalize(data_slice: np.ndarray) -> np.ndarray:
     """
     Apply Z-Score normalization to a given data slice.
 
@@ -21,15 +21,15 @@ def z_score_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray
     if std == 0:
         return np.zeros_like(data_slice)  # Avoid division by zero
 
-    return ((data_slice - mean) / std) * factor
+    return ((data_slice - mean) / std)
 
 def downsample_by_mean(data):
     data = np.array(data)
-    if data.shape[0] % 6 != 0:
+    if data.shape[0] % 18 != 0:
         raise ValueError("Length of data must be a multiple of 6.")
 
     # Reshape the data into a 2D array with each row containing 6 values.
-    reshaped_data = data.reshape(-1, 6)
+    reshaped_data = data.reshape(-1, 18)
     
     # Compute the mean along the axis 1 (i.e. for each row)
     downsampled = reshaped_data.mean(axis=1)
@@ -37,7 +37,7 @@ def downsample_by_mean(data):
 
 def downsample6to1(data):
     data = np.array(data)
-    if data.size != 6:
+    if data.size != 18:
         raise ValueError("Input data must contain exactly 6 values.")
     
     return data.mean()
@@ -45,7 +45,7 @@ def downsample6to1(data):
 def extract_data(data_dir, prefix, before, after):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_amm/{prefix}_preprocessed.csv") # CHANGE HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none/{prefix}_preprocessed.csv") # CHANGE HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -127,7 +127,7 @@ def extract_data(data_dir, prefix, before, after):
         segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled', "phase"]]
 
         input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:1800].values)
-        input_ch0 = z_score_normalize(input_ch0, 1000)
+        input_ch0 = z_score_normalize(input_ch0)
         init_datetime = segment['datetime'].iloc[1799]
         row_ch0 = {
                 'Channel': 0,
@@ -138,7 +138,7 @@ def extract_data(data_dir, prefix, before, after):
         results.append(row_ch0)
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:1800].values)
-        input_ch1 = z_score_normalize(input_ch1, 1000)
+        input_ch1 = z_score_normalize(input_ch1)
         row_ch1 = {
                 'Channel': 1,
                 'Heat': 0,
@@ -148,10 +148,10 @@ def extract_data(data_dir, prefix, before, after):
         results.append(row_ch1)
 
         segment_after_1800 = segment.iloc[1800:]
-        n_groups = len(segment_after_1800) // 6  # Only process complete groups of 6 rows.
+        n_groups = len(segment_after_1800) // 18  # Only process complete groups of 6 rows.
         
         for i in range(n_groups):
-            group = segment_after_1800.iloc[i*6:(i+1)*6]
+            group = segment_after_1800.iloc[i*18:(i+1)*18]
             heat_flag = 1 if group['phase'].isin(['Increasing', 'Holding']).any() else 0
             mean_ch0 = group['CH1_smoothed_scaled'].mean()
             mean_ch1 = group['CH2_smoothed_scaled'].mean()
@@ -161,8 +161,8 @@ def extract_data(data_dir, prefix, before, after):
 
             input_ch0 = np.append(input_ch0[1:], mean_ch0)
             input_ch1 = np.append(input_ch1[1:], mean_ch1)
-            input_ch0 = z_score_normalize(input_ch0, 1000)
-            input_ch1 = z_score_normalize(input_ch1, 1000)
+            input_ch0 = z_score_normalize(input_ch0)
+            input_ch1 = z_score_normalize(input_ch1)
 
             row_ch0 = {
                 'Channel': 0,

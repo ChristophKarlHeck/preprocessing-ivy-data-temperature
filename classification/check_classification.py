@@ -130,7 +130,7 @@ def min_max_scale_column(df: pd.DataFrame, column: str) -> None:
         column (str): Column to scale.
     """
     console.print(f"[bold magenta]Scaling column '{column}' using Min-Max Scaling...[/bold magenta]")
-    df[f"{column}_scaled"] = (df[column] - CONFIG["MIN_VALUE"]) / (
+    df[f"{column}"] = (df[column] - CONFIG["MIN_VALUE"]) / (
         CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
     )
 
@@ -143,7 +143,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
-    validation_method = "max"
+    validation_method = "min"
     df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=2)
     df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=2)
     df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=2)

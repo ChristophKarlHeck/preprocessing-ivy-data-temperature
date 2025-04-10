@@ -143,10 +143,11 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
-    df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=1)
-    df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=1)
-    df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=1)
-    df_temp.index = df_temp.index + pd.Timedelta(hours=1)
+    validation_method = "max"
+    df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=2)
+    df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=2)
+    df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=2)
+    df_temp.index = df_temp.index + pd.Timedelta(hours=2)
 
     fig_width = 5.90666  # Width in inches
     aspect_ratio = 0.618  # Example aspect ratio (height/width)
@@ -162,20 +163,54 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         ax.tick_params(axis='x', labelsize=10)  # Set font size to 10
         plt.setp(ax.get_xticklabels(), fontsize=10, rotation=0, ha='center')
 
-    # Scatter plot for classification
-    axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="CH0", color="blue")
-    axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="CH1", color="green")
 
     axs[0].axhline(y=threshold, color="red", linestyle="--", linewidth=1, label=f"Threshold: {threshold}")
-
-    axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
-                    where=(df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold), 
-                    color='gray', alpha=0.3, label="Stimulus prediction")
 
 
     axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
                 where=(df_merged["phase"].isin(["Increasing", "Holding"])), 
                     color='limegreen', alpha=0.3, label="Stimulus application")
+    
+    if validation_method == "both":
+        # Scatter plot for classification
+        axs[0].plot(df_classified['datetime'], df_classified["ch0_smoothed"], label="CH0", color="#FF0000")
+        axs[0].plot(df_classified['datetime'], df_classified["ch1_smoothed"], label="CH1", color="#8B0000")
+
+        high_both = (df_classified["ch0_smoothed"] > threshold) & (df_classified["ch1_smoothed"] > threshold)
+        axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
+            where=(high_both),
+            color='#722F37', alpha=0.3, label="Stimulus prediction")
+
+    if validation_method == "min":
+        # Scatter plot for classification
+        min_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].min(axis=1)
+        axs[0].plot(df_classified['datetime'], min_smoothed, label="Min of CH0 & CH1", color="#C50000")
+
+        above_threshold = min_smoothed > threshold
+        axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
+            where=(above_threshold),
+            color='#722F37', alpha=0.3, label="Stimulus prediction")
+
+    if validation_method == "max":
+        # Scatter plot for classification
+        max_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].max(axis=1)
+        axs[0].plot(df_classified['datetime'], max_smoothed, label="Min of CH0 & CH1", color="#C50000")
+
+        above_threshold = max_smoothed > threshold
+        axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
+            where=(above_threshold),
+            color='#722F37', alpha=0.3, label="Stimulus prediction")
+
+    if validation_method == "mean":
+        # Scatter plot for classification
+        mean_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].mean(axis=1)
+        axs[0].plot(df_classified['datetime'], mean_smoothed, label="Min of CH0 & CH1", color="#C50000")
+
+        above_threshold = mean_smoothed > threshold
+        axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
+            where=(above_threshold),
+            color='#722F37', alpha=0.3, label="Stimulus prediction")
+
 
     # Get the first timestamp where phase is "Increasing"
     # first_increase_time = df_merged.loc[df_merged["phase"] == "Increasing", "datetime"].iloc[0]
@@ -276,9 +311,11 @@ def main():
     # Process Classified Data
     classified_files = discover_files(data_dir, prefix)
     df_classified = load_and_combine_csv(classified_files)
+    print(df_classified.describe())
     df_classified['datetime'] = pd.to_datetime(df_classified['Datetime'], format='%Y-%m-%d %H:%M:%S:%f', errors='coerce')
     df_classified = df_classified.sort_values(by="datetime").reset_index(drop=True)
     df_classified = cut_data(df_classified, from_date, until_date)
+    print(df_classified.describe())
     # Extract classification probabilities
     df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
     df_classified['ClassificationCh1_1'] = df_classified['ClassificationCh1'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)

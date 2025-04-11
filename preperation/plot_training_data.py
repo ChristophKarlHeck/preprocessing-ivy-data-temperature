@@ -272,20 +272,19 @@ if __name__ == "__main__":
     x_values_both = np.array(x_values_both)
     y_values_both = np.array(y_values_both)
 
-    plt.figure(figsize=(4,3))
+    plt.figure(figsize=(3,2.5))
 
     # Create a hexbin plot using the combined data
-    hb = plt.hexbin(x_values_both, y_values_both, gridsize=30, cmap='Reds', mincnt=1)
+    hb = plt.hexbin(x_values_both, y_values_both, gridsize=40, cmap='Reds', mincnt=1)
 
-    plt.title("Local Z-Score Normalization (30-Minute Window)", fontsize=10)
-    plt.xlabel("Time (minutes relative to the start of heating)", fontsize=10)
+    plt.xlabel("Time (min)", fontsize=10)
     plt.ylabel("EDP [scaled]", fontsize=10)
 
     # Add a vertical line at time zero to indicate the start of Heating
-    plt.axvline(0, color='blue', linestyle='--', label="Start of Heating")
+    plt.axvline(0, color='black', linestyle='--')
 
     plt.legend(loc="lower left", fontsize=8)
-    plt.colorbar(hb, label="Count of Data Points per Hexagon")
+    plt.colorbar(hb, label="Hexagon Data Count")
     plt.tight_layout()
     #plt.show()
     plt.savefig("heatMapZScore30min.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)

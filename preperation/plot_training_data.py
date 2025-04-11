@@ -89,7 +89,7 @@ def adjusted_min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> n
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed/{prefix}_preprocessed.csv")
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none/{prefix}_preprocessed.csv")
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -120,25 +120,47 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
     for start_time in distinct_increasing_starts:
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
-        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed', 'CH2_smoothed']]
+        segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled']]
 
         if not segment.empty:
             # Normalize CH1
-            ch1_values = segment['CH1_smoothed'].values
+            ch1_values = segment['CH1_smoothed_scaled'].values
             #ch1_values = min_max_normalize(ch1_values,1000)
             #ch1_values = adjusted_min_max_normalize(ch1_values,1000)
-            ch1_values = z_score_normalize(ch1_values,1000)
+            #ch1_values = z_score_normalize(ch1_values)
+
             #ch1_values = ch1_values - ch1_values[0]  # Subtract the first value
 
             # Normalize CH2 (if needed)
-            ch2_values = segment['CH2_smoothed'].values
+            ch2_values = segment['CH2_smoothed_scaled'].values
             #ch2_values = min_max_normalize(ch2_values,1000)
-            #ch2_values = adjusted_min_max_normalize(ch2_values,1000)
-            ch2_values = z_score_normalize(ch2_values,1000)
+           # ch2_values = adjusted_min_max_normalize(ch2_values,1000)
+            #ch2_values = z_score_normalize(ch2_values)
             #ch2_values = ch2_values - ch2_values[0]  # Subtract the first value
 
             # segments_ch1.append(ch1_values)
             # segments_ch2.append(ch2_values)
+
+            ###########################################################################################################
+            min10 = 1800
+            n_groups = len(ch1_values) // min10
+
+            result_ch1 = []
+            result_ch2 = []
+            for i in range(n_groups):
+                cut_ch1 = ch1_values[i*min10:(i+1)*min10]
+                cut_ch2 = ch2_values[i*min10:(i+1)*min10]
+                
+                res_ch1 = z_score_normalize(cut_ch1)
+                res_ch2 = z_score_normalize(cut_ch2)
+
+                result_ch1.extend(res_ch1)
+                result_ch2.extend(res_ch2)
+
+            ch1_values = result_ch1
+            ch2_values = result_ch2
+
+            ##############################################################################################################
             all_segments.append(ch1_values)
             all_segments.append(ch2_values)
             segments_datetime.append(segment['datetime'].values)
@@ -182,7 +204,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
 if __name__ == "__main__":
     # Load configuration from the JSON file
-    with open("config.json", "r") as file:
+    with open("config_new.json", "r") as file:
         configs = json.load(file)
 
     all_segments_ch1 = []
@@ -250,12 +272,12 @@ if __name__ == "__main__":
     x_values_both = np.array(x_values_both)
     y_values_both = np.array(y_values_both)
 
-    plt.figure(figsize=(5.90666,4))
+    plt.figure(figsize=(4,3))
 
     # Create a hexbin plot using the combined data
-    hb = plt.hexbin(x_values_both, y_values_both, gridsize=50, cmap='Reds', mincnt=1)
+    hb = plt.hexbin(x_values_both, y_values_both, gridsize=30, cmap='Reds', mincnt=1)
 
-    plt.title("Training Data (CH0 and CH1)", fontsize=10)
+    plt.title("Local Z-Score Normalization (30-Minute Window)", fontsize=10)
     plt.xlabel("Time (minutes relative to the start of heating)", fontsize=10)
     plt.ylabel("EDP [scaled]", fontsize=10)
 
@@ -265,8 +287,8 @@ if __name__ == "__main__":
     plt.legend(loc="lower left", fontsize=8)
     plt.colorbar(hb, label="Count of Data Points per Hexagon")
     plt.tight_layout()
-    plt.show()
-    #plt.savefig("heatMapTrainingDataBothChannels.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    #plt.show()
+    plt.savefig("heatMapZScore30min.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
 
     
     # # Create subplots for CH1 and CH2

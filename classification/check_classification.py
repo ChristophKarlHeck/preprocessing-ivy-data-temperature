@@ -21,17 +21,17 @@ from typing import Optional
 from scipy.interpolate import make_interp_spline
 
 # Use the PGF backend
-# matplotlib.use("pgf")
+matplotlib.use("pgf")
 
-# # Update rcParams
-# plt.rcParams.update({
-#     "pgf.texsystem": "xelatex",  # Use XeLaTeX
-#     "font.family": "sans-serif",  # Use a sans-serif font
-#     "font.sans-serif": ["Arial"],  # Specifically use Arial
-#     "font.size": 10,  # Set the font size
-#     "text.usetex": True,  # Use LaTeX for text rendering
-#     "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
-# })
+# Update rcParams
+plt.rcParams.update({
+    "pgf.texsystem": "xelatex",  # Use XeLaTeX
+    "font.family": "sans-serif",  # Use a sans-serif font
+    "font.sans-serif": ["Arial"],  # Specifically use Arial
+    "font.size": 10,  # Set the font size
+    "text.usetex": True,  # Use LaTeX for text rendering
+    "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
+})
 
 # Constants
 CONFIG = {
@@ -164,7 +164,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         plt.setp(ax.get_xticklabels(), fontsize=10, rotation=0, ha='center')
 
 
-    axs[0].axhline(y=threshold, color="red", linestyle="--", linewidth=1, label=f"Threshold: {threshold}")
+    axs[0].axhline(y=threshold, color="black", linestyle="--", linewidth=1, label=f"Threshold: {threshold}")
 
 
     axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
@@ -184,7 +184,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     if validation_method == "min":
         # Scatter plot for classification
         min_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].min(axis=1)
-        axs[0].plot(df_classified['datetime'], min_smoothed, label="Min of CH0 & CH1", color="#C50000")
+        axs[0].plot(df_classified['datetime'], min_smoothed, label="Min of CH0 and CH1 Classification", color="#C50000")
 
         above_threshold = min_smoothed > threshold
         axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
@@ -194,7 +194,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     if validation_method == "max":
         # Scatter plot for classification
         max_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].max(axis=1)
-        axs[0].plot(df_classified['datetime'], max_smoothed, label="Min of CH0 & CH1", color="#C50000")
+        axs[0].plot(df_classified['datetime'], max_smoothed, label="Max of CH0 and CH1 Classification", color="#C50000")
 
         above_threshold = max_smoothed > threshold
         axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
@@ -204,7 +204,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     if validation_method == "mean":
         # Scatter plot for classification
         mean_smoothed = df_classified[["ch0_smoothed", "ch1_smoothed"]].mean(axis=1)
-        axs[0].plot(df_classified['datetime'], mean_smoothed, label="Min of CH0 & CH1", color="#C50000")
+        axs[0].plot(df_classified['datetime'], mean_smoothed, label="Mean of CH0 and CH1 Classification", color="#C50000")
 
         above_threshold = mean_smoothed > threshold
         axs[0].fill_between(df_classified['datetime'], 0, 1.0, 
@@ -230,8 +230,8 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     axs[0].set_ylabel("Heat Phase Probability",fontsize=10)
     axs[0].tick_params(axis='y', labelsize=10) 
 
-    axs[0].set_title(f"Online Heat Phase Classification Using Ivy Data (ID {plant_id})", fontsize=10, pad=40)
-    axs[0].legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.25), ncol=3, framealpha=0.7)
+    axs[0].set_title(f"Online Heat Phase Classification with PhytoNodeClassifier (Plant ID: {plant_id})", fontsize=10, pad=40)
+    axs[0].legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, 1.25), ncol=2, framealpha=0.7)
 
 
     # Line plot for interpolated electric potential
@@ -241,14 +241,14 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     # Labels and Titles
     axs[1].tick_params(axis='y', labelsize=10)
     axs[1].set_ylabel("EDP [scaled]",fontsize=10)
-    axs[1].set_title("Normalized CNN Input via Adjusted Min-Max Scaling",fontsize=10)
-    axs[1].legend(fontsize=8, loc="lower right")
+    axs[1].set_title("Feature-Scaled FCN Input via Adjusted Min-Max Normalization",fontsize=10)
+    axs[1].legend(fontsize=8, loc="upper right")
 
     # Temperature
     axs[2].tick_params(axis='y', labelsize=10)
     axs[2].set_ylabel("Temperature [°C]", fontsize=10)
-    axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Average Leaf Temperature", alpha=0.7)
-    axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Average Air Temperature", alpha=0.7)
+    axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Average Leaf Temperature", alpha=0.7, color="#228B22")
+    axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Average Air Temperature", alpha=0.7, color= "#FF8C00")
     axs[2].set_title("Temperature Data", fontsize=10)
     axs[2].legend(fontsize=8, loc="lower right")
 
@@ -256,10 +256,10 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     fig.tight_layout()
 
     # Save figure in PGF format with proper bounding box
-    #plt.savefig(f"minMaxOnlineClassificationAdjusted{plant_id}Shifted.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    plt.savefig(f"OnlineHeatPhaseClassification.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
-    plt.show()
+    #plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """

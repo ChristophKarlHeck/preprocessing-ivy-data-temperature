@@ -143,7 +143,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
-    validation_method = "min"
+    validation_method = "mean" 
     df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=2)
     df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=2)
     df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=2)
@@ -169,7 +169,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
 
     axs[0].fill_between(df_merged['datetime'], 0, 1.0, 
                 where=(df_merged["phase"].isin(["Increasing", "Holding"])), 
-                    color='limegreen', alpha=0.3, label="Stimulus application")
+                    color='#DC143C', alpha=0.3, label="Stimulus application")
     
     if validation_method == "both":
         # Scatter plot for classification
@@ -235,8 +235,8 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
 
 
     # Line plot for interpolated electric potential
-    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh0'], label="CH0", color="blue")
-    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh1'], label="CH1", color="green", linestyle="dashed")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh0'], label="CH0", color="#90EE90")
+    axs[1].plot(df_input['datetime'], df_input['LastVoltageCh1'], label="CH1", color="#013220")
 
     # Labels and Titles
     axs[1].tick_params(axis='y', labelsize=10)
@@ -320,11 +320,11 @@ def main():
     df_classified['ClassificationCh0_1'] = df_classified['ClassificationCh0'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
     df_classified['ClassificationCh1_1'] = df_classified['ClassificationCh1'].str.extract(r'\[(?:\d+\.\d+),\s*(\d+\.\d+)\]').astype(float)
 
-    window_size = 100 # 100 = 10min
+    window_size_1 = 20 # 100 = 10min
 
         # Compute rolling averages and store them in the dataframe
-    df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size, min_periods=1).mean()
-    df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size, min_periods=1).mean()
+    df_classified["ch0_smoothed"] = df_classified["ClassificationCh0_1"].rolling(window=window_size_1, min_periods=1).mean()
+    df_classified["ch1_smoothed"] = df_classified["ClassificationCh1_1"].rolling(window=window_size_1, min_periods=1).mean()
 
     
 
@@ -361,8 +361,9 @@ def main():
     print("Number of data points:", num_rows)
     min_max_scale_column(df_input_nn, "LastVoltageCh0")
     min_max_scale_column(df_input_nn, "LastVoltageCh1")
-    df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size, min_periods=1).mean()
-    df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size, min_periods=1).mean()
+    window_size_2 = 10
+    df_input_nn["LastVoltageCh0"] = df_input_nn["LastVoltageCh0"].rolling(window=window_size_2, min_periods=1).mean()
+    df_input_nn["LastVoltageCh1"] = df_input_nn["LastVoltageCh1"].rolling(window=window_size_2, min_periods=1).mean()
     # df_input_nn = df_input_nn.set_index("datetime", drop=False)
     # df_input_nn = df_input_nn.resample("1s").mean().interpolate()
 

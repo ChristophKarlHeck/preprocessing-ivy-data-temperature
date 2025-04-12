@@ -141,9 +141,11 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             # segments_ch1.append(ch1_values)
             # segments_ch2.append(ch2_values)
 
+            # Snippets
             ###########################################################################################################
-            min10 = 1800
+            min10 = 3600
             n_groups = len(ch1_values) // min10
+            print(n_groups)
 
             result_ch1 = []
             result_ch2 = []
@@ -151,8 +153,8 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
                 cut_ch1 = ch1_values[i*min10:(i+1)*min10]
                 cut_ch2 = ch2_values[i*min10:(i+1)*min10]
                 
-                res_ch1 = z_score_normalize(cut_ch1)
-                res_ch2 = z_score_normalize(cut_ch2)
+                res_ch1 = adjusted_min_max_normalize(cut_ch1, 1000)
+                res_ch2 = adjusted_min_max_normalize(cut_ch2, 1000)
 
                 result_ch1.extend(res_ch1)
                 result_ch2.extend(res_ch2)
@@ -161,6 +163,33 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             ch2_values = result_ch2
 
             ##############################################################################################################
+            # Rolling Window
+            ###########################################################################################################
+            # min10 = 600
+            # rolling_distance = min10/100
+
+            # segment_after_ch1 = ch1_values[min10:]
+            # segment_after_ch2 = ch2_values[min10:]
+            # n_groups = len(ch1_values) // (rolling_distance)
+
+            # result_ch1 = ch1_values[]
+            # result_ch2 = []
+            # for i in range(n_groups):
+            #     cut_ch1 = ch1_values[i*min10:(i+1)*min10]
+            #     cut_ch2 = ch2_values[i*min10:(i+1)*min10]
+                
+            #     res_ch1 = adjusted_min_max_normalize(cut_ch1, 1000)
+            #     res_ch2 = adjusted_min_max_normalize(cut_ch2, 1000)
+
+            #     result_ch1.extend(res_ch1)
+            #     result_ch2.extend(res_ch2)
+
+            # ch1_values = result_ch1
+            # ch2_values = result_ch2
+
+            ##############################################################################################################
+
+
             all_segments.append(ch1_values)
             all_segments.append(ch2_values)
             segments_datetime.append(segment['datetime'].values)
@@ -268,26 +297,22 @@ if __name__ == "__main__":
     # y_values_ch2 = np.array(y_values_ch2)
 
 
-
-    x_values_both = np.array(x_values_both)
-    y_values_both = np.array(y_values_both)
-
-    plt.figure(figsize=(3,2.5))
+    plt.figure(figsize=(3,2))
 
     # Create a hexbin plot using the combined data
-    hb = plt.hexbin(x_values_both, y_values_both, gridsize=40, cmap='Reds', mincnt=1)
+    hb = plt.hexbin(x_values_both, y_values_both, gridsize=50, cmap='Reds', mincnt=1)
 
-    plt.xlabel("Time (min)", fontsize=10)
+    plt.xlabel("Minutes", fontsize=10)
     plt.ylabel("EDP [scaled]", fontsize=10)
 
     # Add a vertical line at time zero to indicate the start of Heating
     plt.axvline(0, color='black', linestyle='--')
 
-    plt.legend(loc="lower left", fontsize=8)
-    plt.colorbar(hb, label="Hexagon Data Count")
+    #plt.legend(loc="lower left", fontsize=8)
+    #plt.colorbar(hb)
     plt.tight_layout()
     #plt.show()
-    plt.savefig("heatMapZScore30min.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    plt.savefig("heatMapAMM1000Local60.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
 
     
     # # Create subplots for CH1 and CH2

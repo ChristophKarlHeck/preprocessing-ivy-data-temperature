@@ -24,29 +24,36 @@ def z_score_normalize(data_slice: np.ndarray) -> np.ndarray:
     return result
 
 
-def downsample_by_mean(data):
+def normalize(input: np.ndarray, method: str):
+    result = None
+
+    if method == "z-score":
+        result = z_score_normalize(input)
+
+
+    return result
+
+
+def downsample_by_mean(data, rate):
     data = np.array(data)
-    if data.shape[0] % 6 != 0:
-        raise ValueError("Length of data must be a multiple of 6.")
+    if data.shape[0] % rate != 0:
+        raise ValueError(f"Length of data must be a multiple of {rate}.")
 
     # Reshape the data into a 2D array with each row containing 6 values.
-    reshaped_data = data.reshape(-1, 6)
+    reshaped_data = data.reshape(-1, rate)
     
     # Compute the mean along the axis 1 (i.e. for each row)
     downsampled = reshaped_data.mean(axis=1)
     return downsampled
 
-def downsample6to1(data):
-    data = np.array(data)
-    if data.size != 6:
-        raise ValueError("Input data must contain exactly 6 values.")
-    
-    return data.mean()
-
 def extract_data(data_dir, prefix, before, after):
+    normalize_method = None
+    secNormalize = 600
+    compressionTo100 = 6
+
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_none/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1000/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -116,7 +123,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.tight_layout()
     
     # Display the plot
-    plt.show()
+    #plt.show()
 
     # Extract 60-minute segments around each increasing start
     time_window_before = pd.Timedelta(minutes=90)
@@ -127,9 +134,12 @@ def extract_data(data_dir, prefix, before, after):
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
         segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled', "phase"]]
 
-        input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:600].values)
-        input_ch0 = z_score_normalize(input_ch0)
-        init_datetime = segment['datetime'].iloc[599]
+        input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:secNormalize].values, compressionTo100)
+
+        if normalize_method:
+            input_ch0 = normalize(input_ch0, normalize_method)
+            
+        init_datetime = segment['datetime'].iloc[secNormalize]
         row_ch0 = {
                 'Channel': 0,
                 'Heat': 0,
@@ -138,8 +148,10 @@ def extract_data(data_dir, prefix, before, after):
         row_ch0.update({f'val_{z}': input_ch0[z] for z in range(len(input_ch0))})
         results.append(row_ch0)
 
-        input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:600].values)
-        input_ch1 = z_score_normalize(input_ch1)
+        input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:secNormalize].values, compressionTo100)
+        if normalize_method:
+            input_ch1 = normalize(input_ch1, normalize_method)
+
         row_ch1 = {
                 'Channel': 1,
                 'Heat': 0,
@@ -148,11 +160,11 @@ def extract_data(data_dir, prefix, before, after):
         row_ch1.update({f'val_{z}': input_ch1[z] for z in range(len(input_ch1))})
         results.append(row_ch1)
 
-        segment_after_600 = segment.iloc[600:]
-        n_groups = len(segment_after_600) // 6  # Only process complete groups of 6 rows.
+        segment_after_600 = segment.iloc[secNormalize:]
+        n_groups = len(segment_after_600) // compressionTo100  # Only process complete groups of 6 rows.
         
         for i in range(n_groups):
-            group = segment_after_600.iloc[i*6:(i+1)*6]
+            group = segment_after_600.iloc[i*compressionTo100:(i+1)*compressionTo100]
             heat_flag = 1 if group['phase'].isin(['Increasing', 'Holding']).any() else 0
             mean_ch0 = group['CH1_smoothed_scaled'].mean()
             mean_ch1 = group['CH2_smoothed_scaled'].mean()
@@ -162,8 +174,11 @@ def extract_data(data_dir, prefix, before, after):
 
             input_ch0 = np.append(input_ch0[1:], mean_ch0)
             input_ch1 = np.append(input_ch1[1:], mean_ch1)
-            input_ch0 = z_score_normalize(input_ch0)
-            input_ch1 = z_score_normalize(input_ch1)
+
+            if normalize_method:
+                input_ch0 = normalize(input_ch0, normalize_method)
+                input_ch1 = normalize(input_ch1, normalize_method)
+
 
             row_ch0 = {
                 'Channel': 0,
@@ -195,7 +210,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Heat Classification (0 = Not Heat, 1 = Heat)")
     plt.title("Heat Classification Over Time (Channel 0)")
     plt.grid(True)
-    plt.show()
+    #plt.show()
 
     # Separate the two classes.
     df_heat0 = df_results[df_results['Heat'] == 0]
@@ -233,10 +248,12 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Count")
 
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
     # Convert to DataFrame and save to CSV
-    output_dir = os.path.join(data_dir, "training_data")
+    output_dir = os.path.join(data_dir, "rolling_window")
+    os.makedirs(output_dir, exist_ok=True)
+    output_dir = os.path.join(output_dir, "training_data_none_1000_10_global")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
     df_balanced.to_csv(output_path, index=False)

@@ -1,28 +1,13 @@
 #!/bin/bash
 
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/1_2024_12_13-2024_12_19 --prefix "P3" --before 10 --after 10 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/1_2024_12_13-2024_12_19 --prefix "P5" --before 20 --after 20 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/2_2024_12_20-2024_12_26 --prefix "P5" --before 20 --after 20 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/2_2024_12_20-2024_12_26 --prefix "P3" --before 20 --after 20 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/3_2024_12_27-2025_01_03 --prefix "P5" --before 20 --after 20 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/4_2025_01_04-2025_01_08 --prefix "P5" --before 20 --after 20 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --prefix "P5" --before 30 --after 30 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --prefix "P5" --before 30 --after 30 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --prefix "P5" --before 30 --after 30 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P5" --before 30 --after 30 --split_minutes 10
-
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --prefix "P3" --before 30 --after 30 --split_minutes 10
-python3 extract_important_domains.py --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --prefix "P5" --before 30 --after 30 --split_minutes 10 
-
-python3 extract_important_domains.py --data_dir "/home/chris/experiment_data/10_2025_02_20-2025_02_27" --prefix "P3" --before 30 --after 30 --split_minutes 10
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --prefix "P3" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --prefix "P5" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --prefix "P3" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --prefix "P5" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --prefix "P3" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/7_2025_01_24-2025_01_30 --prefix "P5" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P3" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/8_2025_01_31-2025_02_11 --prefix "P5" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --prefix "P3" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir /home/chris/experiment_data/9_2025_02_12-2025_02_20 --prefix "P5" --before 90 --after 60
+python3 extract_important_domains_10min.py --data_dir "/home/chris/experiment_data/10_2025_02_20-2025_02_27" --prefix "P3" --before 90 --after 60

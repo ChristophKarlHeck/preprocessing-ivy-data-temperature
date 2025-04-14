@@ -21,17 +21,17 @@ from typing import Optional
 from scipy.interpolate import make_interp_spline
 
 # Use the PGF backend
-matplotlib.use("pgf")
+# matplotlib.use("pgf")
 
-# Update rcParams
-plt.rcParams.update({
-    "pgf.texsystem": "xelatex",  # Use XeLaTeX
-    "font.family": "sans-serif",  # Use a sans-serif font
-    "font.sans-serif": ["Arial"],  # Specifically use Arial
-    "font.size": 10,  # Set the font size
-    "text.usetex": True,  # Use LaTeX for text rendering
-    "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
-})
+# # Update rcParams
+# plt.rcParams.update({
+#     "pgf.texsystem": "xelatex",  # Use XeLaTeX
+#     "font.family": "sans-serif",  # Use a sans-serif font
+#     "font.sans-serif": ["Arial"],  # Specifically use Arial
+#     "font.size": 10,  # Set the font size
+#     "text.usetex": True,  # Use LaTeX for text rendering
+#     "pgf.rcfonts": False,  # Do not override Matplotlib's rc settings
+# })
 
 # Constants
 CONFIG = {
@@ -143,7 +143,7 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
-    validation_method = "mean" 
+    validation_method = "min" 
     df_classified['datetime'] = df_classified['datetime'] + pd.Timedelta(hours=2)
     df_merged['datetime'] = df_merged['datetime'] + pd.Timedelta(hours=2)
     df_input['datetime'] = df_input['datetime'] + pd.Timedelta(hours=2)

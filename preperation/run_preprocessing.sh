@@ -11,8 +11,8 @@
 
 # python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/4_2025_01_04-2025_01_08 --from_date 2025-01-04 --until_date 2025-01-08
 
-# python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --from_date 2025-01-10 --until_date 2025-01-16
-# python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --from_date 2025-01-10 --until_date 2025-01-16
+python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --from_date 2025-01-10 --until_date 2025-01-16
+python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/5_2025_01_09-2025_01_15 --from_date 2025-01-10 --until_date 2025-01-16
 
 python3 preprocessing.py --prefix P3 --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --from_date 2025-01-17 --until_date 2025-01-20
 python3 preprocessing.py --prefix P5 --data_dir /home/chris/experiment_data/6_2025_01_16-2025_01_23 --from_date 2025-01-17 --until_date 2025-01-20

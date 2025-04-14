@@ -22,8 +22,8 @@ CONFIG = {
     "GAIN": 4.0,
     "WINDOW_SIZE": 6,
     "RESAMPLE_RATE": "1s",
-    "MIN_VALUE": -0.2,
-    "MAX_VALUE": 0.2,
+    "MIN_VALUE": -200,
+    "MAX_VALUE": 200,
     "FACTOR": 1,
 }
 
@@ -103,8 +103,8 @@ def scale_column(df: pd.DataFrame, column: str) -> None:
         column (str): Column to scale.
     """
     console.print(f"[bold magenta]Scaling column '{column}' using Min-Max Scaling...[/bold magenta]")
-    df[f"{column}_scaled"] = ((df[column] + 0.2) / (
-        0.4) * CONFIG["FACTOR"]
+    df[f"{column}_scaled"] = ((df[column] - CONFIG["MIN_VALUE"]) / (
+        CONFIG["MAX_VALUE"]-CONFIG["MIN_VALUE"]) * CONFIG["FACTOR"]
     )
 
 def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_dir: str) -> None:
@@ -206,10 +206,10 @@ def main():
     df_phyto["CH2_milli_volt"] = ((df_phyto["CH2"] / CONFIG["DATABITS"] - 1) * CONFIG["VREF"] / CONFIG["GAIN"]) * 1000
     df_phyto["CH1_smoothed"] = df_phyto["CH1_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
     df_phyto["CH2_smoothed"] = df_phyto["CH2_milli_volt"].rolling(CONFIG["WINDOW_SIZE"]).mean()
-    #scale_column(df_phyto, "CH1_smoothed")
-    #scale_column(df_phyto, "CH2_smoothed")
-    df_phyto["CH1_smoothed_scaled"] = df_phyto["CH1_smoothed"]
-    df_phyto["CH2_smoothed_scaled"] = df_phyto["CH2_smoothed"]
+    scale_column(df_phyto, "CH1_smoothed")
+    scale_column(df_phyto, "CH2_smoothed")
+    #df_phyto["CH1_smoothed_scaled"] = df_phyto["CH1_smoothed"]*1000
+    #df_phyto["CH2_smoothed_scaled"] = df_phyto["CH2_smoothed"]*1000
 
     # Process Temperature Node
     temp_files = discover_files(data_dir, "P6")
@@ -221,7 +221,7 @@ def main():
     df_temp["avg_air_temp"] = (df_temp["T1_air"] + df_temp["T2_air"]) / 2
 
     # Save and Plot
-    preprocessed_dir = os.path.join(data_dir, "preprocessed_none")
+    preprocessed_dir = os.path.join(data_dir, "preprocessed_mm_1")
     os.makedirs(preprocessed_dir, exist_ok=True)
     df_phyto.to_csv(os.path.join(preprocessed_dir, f"{prefix}_preprocessed.csv"))
     df_temp.to_csv(os.path.join(preprocessed_dir, "temperature_preprocessed.csv"))

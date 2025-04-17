@@ -4,31 +4,50 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def z_score_normalize(data_slice: np.ndarray) -> np.ndarray:
 
+def z_score_normalize(data_slice: np.ndarray, factor: float) -> np.ndarray:
     mean = np.mean(data_slice)
     std = np.std(data_slice)
-    
-    # Create an output array with the same shape as the input
-    result = np.empty_like(data_slice, dtype=float)
-    
-    # Avoid division by zero if standard deviation is zero
+
     if std == 0:
-        result.fill(0.0)
-        return result
+        return np.zeros_like(data_slice)  # Avoid division by zero
 
-    # Explicitly iterate over each element in the array
-    for i in range(len(data_slice)):
-        result[i] = ((data_slice[i] - mean) / std)
-    
-    return result
+    return ((data_slice - mean) / std) * factor
+
+def min_max_normalize(data_slice: np.ndarray, factor: float) -> np.ndarray:
+    min_val = data_slice.min()
+    max_val = data_slice.max()
+    range_val = max_val - min_val
+
+    if range_val == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero if all values are the same
+
+    normalized = (data_slice - min_val) / range_val
+    return normalized * factor
+
+def adjusted_min_max_normalize(data_slice: np.ndarray, factor: float) -> np.ndarray:
+    min_val = data_slice.min()
+    max_val = data_slice.max()
+    range_val = (max_val/factor) - (min_val/factor)
+
+    if range_val == 0:
+        return np.zeros_like(data_slice)  # Avoid division by zero if all values are the same
+
+    normalized = (data_slice - (min_val/factor)) / range_val
+    return normalized
 
 
-def normalize(input: np.ndarray, method: str):
+def normalize(input: np.ndarray, factor: float, method: str):
     result = None
 
-    if method == "z-score":
-        result = z_score_normalize(input)
+    if method == "zscore":
+        result = z_score_normalize(input, factor)
+
+    if method == "mm":
+        result = min_max_normalize(input, factor)
+
+    if method == "amm":
+        result = adjusted_min_max_normalize(input, factor)
 
 
     return result
@@ -47,13 +66,14 @@ def downsample_by_mean(data, rate):
     return downsampled
 
 def extract_data(data_dir, prefix, before, after):
-    normalize_method = None
+    normalize_method = "amm"
     secNormalize = 600
     compressionTo100 = 6
+    factor = 1
 
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1000/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -123,7 +143,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.tight_layout()
     
     # Display the plot
-    #plt.show()
+    plt.show()
 
     # Extract 60-minute segments around each increasing start
     time_window_before = pd.Timedelta(minutes=90)
@@ -137,7 +157,7 @@ def extract_data(data_dir, prefix, before, after):
         input_ch0 = downsample_by_mean(segment['CH1_smoothed_scaled'][0:secNormalize].values, compressionTo100)
 
         if normalize_method:
-            input_ch0 = normalize(input_ch0, normalize_method)
+            input_ch0 = normalize(input_ch0, factor, normalize_method)
             
         init_datetime = segment['datetime'].iloc[secNormalize]
         row_ch0 = {
@@ -150,7 +170,7 @@ def extract_data(data_dir, prefix, before, after):
 
         input_ch1 = downsample_by_mean(segment['CH2_smoothed_scaled'][0:secNormalize].values, compressionTo100)
         if normalize_method:
-            input_ch1 = normalize(input_ch1, normalize_method)
+            input_ch1 = normalize(input_ch1, factor, normalize_method)
 
         row_ch1 = {
                 'Channel': 1,
@@ -176,8 +196,8 @@ def extract_data(data_dir, prefix, before, after):
             input_ch1 = np.append(input_ch1[1:], mean_ch1)
 
             if normalize_method:
-                input_ch0 = normalize(input_ch0, normalize_method)
-                input_ch1 = normalize(input_ch1, normalize_method)
+                input_ch0 = normalize(input_ch0, factor, normalize_method)
+                input_ch1 = normalize(input_ch1, factor, normalize_method)
 
 
             row_ch0 = {
@@ -210,7 +230,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Heat Classification (0 = Not Heat, 1 = Heat)")
     plt.title("Heat Classification Over Time (Channel 0)")
     plt.grid(True)
-    #plt.show()
+    plt.show()
 
     # Separate the two classes.
     df_heat0 = df_results[df_results['Heat'] == 0]
@@ -248,12 +268,12 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Count")
 
     plt.tight_layout()
-    #plt.show()
+    plt.show()
 
     # Convert to DataFrame and save to CSV
     output_dir = os.path.join(data_dir, "rolling_window")
     os.makedirs(output_dir, exist_ok=True)
-    output_dir = os.path.join(output_dir, "training_data_none_1000_10_global")
+    output_dir = os.path.join(output_dir, f"training_data_{normalize_method}_{factor}_10_local")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
     df_balanced.to_csv(output_path, index=False)

@@ -66,10 +66,10 @@ def downsample_by_mean(data, rate):
     return downsampled
 
 def extract_data(data_dir, prefix, before, after):
-    normalize_method = "amm"
-    secNormalize = 600
-    compressionTo100 = 6
-    factor = 1
+    normalize_method = "zscore"
+    secNormalize = 3600
+    compressionTo100 = 36
+    factor = 1000
 
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
@@ -143,7 +143,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.tight_layout()
     
     # Display the plot
-    plt.show()
+    #plt.show()
 
     # Extract 60-minute segments around each increasing start
     time_window_before = pd.Timedelta(minutes=90)
@@ -230,7 +230,7 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Heat Classification (0 = Not Heat, 1 = Heat)")
     plt.title("Heat Classification Over Time (Channel 0)")
     plt.grid(True)
-    plt.show()
+    #plt.show()
 
     # Separate the two classes.
     df_heat0 = df_results[df_results['Heat'] == 0]
@@ -268,12 +268,12 @@ def extract_data(data_dir, prefix, before, after):
     plt.ylabel("Count")
 
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
     # Convert to DataFrame and save to CSV
     output_dir = os.path.join(data_dir, "rolling_window")
     os.makedirs(output_dir, exist_ok=True)
-    output_dir = os.path.join(output_dir, f"training_data_{normalize_method}_{factor}_10_local")
+    output_dir = os.path.join(output_dir, f"training_data_{normalize_method}_{factor}_60_local")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f"{prefix}_ready_to_train.csv")
     df_balanced.to_csv(output_path, index=False)

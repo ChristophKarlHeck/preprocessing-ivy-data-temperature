@@ -89,7 +89,7 @@ def adjusted_min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> n
 def extract_data(data_dir, prefix, before, after, split_minutes):
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_none/{prefix}_preprocessed.csv")
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1/{prefix}_preprocessed.csv")
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data
@@ -118,7 +118,9 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
     time_window_after = pd.Timedelta(minutes=after)
     segments_ch1, segments_ch2, all_segments, segments_datetime = [], [], [], []
 
+    nbr_heating_phases = 0
     for start_time in distinct_increasing_starts:
+        nbr_heating_phases += 1
         mask = (merged_data['datetime'] >= start_time - time_window_before) & (merged_data['datetime'] <= start_time + time_window_after)
         segment = merged_data.loc[mask, ['datetime', 'CH1_smoothed_scaled', 'CH2_smoothed_scaled']]
 
@@ -143,15 +145,16 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
             # Snippets
             ###########################################################################################################
-            min10 = 3600
+            min10 = 600
             n_groups = len(ch1_values) // min10
-            print(n_groups)
 
             result_ch1 = []
             result_ch2 = []
             for i in range(n_groups):
                 cut_ch1 = ch1_values[i*min10:(i+1)*min10]
                 cut_ch2 = ch2_values[i*min10:(i+1)*min10]
+
+                #print(len(cut_ch1))
                 
                 res_ch1 = adjusted_min_max_normalize(cut_ch1, 1000)
                 res_ch2 = adjusted_min_max_normalize(cut_ch2, 1000)
@@ -194,7 +197,7 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
             all_segments.append(ch2_values)
             segments_datetime.append(segment['datetime'].values)
 
-
+    print(nbr_heating_phases)
     # Ensure segments_ch1 and segments_ch2 are NumPy arrays.
     segments_ch1 = np.array(segments_ch1)
     segments_ch2 = np.array(segments_ch2)
@@ -311,8 +314,8 @@ if __name__ == "__main__":
     #plt.legend(loc="lower left", fontsize=8)
     #plt.colorbar(hb)
     plt.tight_layout()
-    #plt.show()
-    plt.savefig("heatMapAMM1000Local60.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    plt.show()
+    #plt.savefig("heatMapAMM1000Local60.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
 
     
     # # Create subplots for CH1 and CH2

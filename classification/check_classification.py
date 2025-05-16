@@ -134,6 +134,106 @@ def min_max_scale_column(df: pd.DataFrame, column: str) -> None:
         CONFIG["MAX_VALUE"] - CONFIG["MIN_VALUE"]
     )
 
+def compute_confusion(df_classified: pd.DataFrame,
+                      df_merged:    pd.DataFrame,
+                      threshold:    float,
+                      validation:   str = "min",
+                      time_col:     str = "datetime",
+                      phase_col:    str = "phase") -> dict:
+    """
+    Compute TP, FP, TN, FN between stimulus-application ground truth
+    (phases "Increasing" or "Holding") and your prediction
+    (min, max or mean channel > threshold).
+    """
+
+    # 1) build truth series
+    df_gt = df_merged.copy()
+    df_gt[time_col] = pd.to_datetime(df_gt[time_col])
+    df_gt = df_gt.set_index(time_col)
+    truth = df_gt[phase_col].isin(["Increasing", "Holding"])
+
+    # 2) build prediction series
+    df_pr = df_classified.copy()
+    df_pr[time_col] = pd.to_datetime(df_pr[time_col])
+    df_pr = df_pr.set_index(time_col)
+    if validation == "min":
+        scores = df_pr[["ch0_smoothed", "ch1_smoothed"]].min(axis=1)
+    elif validation == "max":
+        scores = df_pr[["ch0_smoothed", "ch1_smoothed"]].max(axis=1)
+    elif validation == "mean":
+        scores = df_pr[["ch0_smoothed", "ch1_smoothed"]].mean(axis=1)
+    else:
+        raise ValueError(f"Unknown validation method {validation!r}")
+    pred = scores > threshold
+
+    # 3) align on the intersection of timestamps
+    idx = truth.index.intersection(pred.index)
+    truth_aligned = truth.loc[idx]
+    pred_aligned  = pred.loc[idx]
+
+    # 4) compute confusion counts
+    tp = int(((truth_aligned) & (pred_aligned)).sum())
+    fp = int(((~truth_aligned) & (pred_aligned)).sum())
+    tn = int(((~truth_aligned) & (~pred_aligned)).sum())
+    fn = int(((truth_aligned) & (~pred_aligned)).sum())
+
+    return {"TP": tp, "FP": fp, "TN": tn, "FN": fn}
+
+
+def compute_confusion_asof(
+    df_classified: pd.DataFrame,
+    df_merged:      pd.DataFrame,
+    threshold:      float,
+    validation:     str = "min",
+    time_col:       str = "datetime",
+    phase_col:      str = "phase",
+    merge_direction: str = "backward"   # use "backward" to pick last-known phase
+) -> dict:
+    """
+    Compute TP/FP/TN/FN by doing a merge_asof on the datetime index,
+    so that each classification row inherits the most recent ground-truth phase.
+    """
+    # 1) prepare dataframes
+    df_gt = df_merged[[time_col, phase_col]].copy()
+    df_gt[time_col] = pd.to_datetime(df_gt[time_col])
+    df_gt = df_gt.sort_values(time_col)
+
+    df_pr = df_classified.copy()
+    df_pr[time_col] = pd.to_datetime(df_pr[time_col])
+    df_pr = df_pr.sort_values(time_col)
+
+    # 2) merge_asof: each row in df_pr picks up the last phase from df_gt
+    df = pd.merge_asof(
+        df_pr,
+        df_gt,
+        on=time_col,
+        direction=merge_direction   # backward = last known; forward = next known
+    )
+
+    # 3) build boolean ground truth (stimulus applied)
+    df['truth'] = df[phase_col].isin(["Increasing", "Holding"])
+
+    # 4) build boolean prediction
+    if validation == "min":
+        score = df[["ch0_smoothed","ch1_smoothed"]].min(axis=1)
+    elif validation == "max":
+        score = df[["ch0_smoothed","ch1_smoothed"]].max(axis=1)
+    elif validation == "mean":
+        score = df[["ch0_smoothed","ch1_smoothed"]].mean(axis=1)
+    else:
+        raise ValueError(f"Unknown validation method {validation!r}")
+
+    df['pred'] = score > threshold
+
+    # 5) compute confusion
+    tp = int(((df['truth']) & (df['pred'])).sum())
+    fp = int(((~df['truth']) & (df['pred'])).sum())
+    tn = int(((~df['truth']) & (~df['pred'])).sum())
+    fn = int(((df['truth']) & (~df['pred'])).sum())
+
+    return {"TP": tp, "FP": fp, "TN": tn, "FN": fn}
+
+
 def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, threshold: float, plant_id: int, save_dir: str) -> None:
     """
     Plot and save the processed data.
@@ -403,7 +503,6 @@ def main():
     save_config_to_txt(CONFIG, preprocessed_dir, prefix)
     plot_data(df_classified, df_input_nn, df_merged, df_temp, prefix, threshold, plant_id, preprocessed_dir)
 
-
     df_output = pd.DataFrame({
     "datetime": df_merged["datetime"],
     "ground_truth": df_merged["phase"].apply(lambda x: 1 if x in ["Increasing", "Holding"] else 0),
@@ -419,6 +518,16 @@ def main():
 
     # Save the CSV file
     df_output.to_csv(csv_file, index=False)
+
+    # --- example usage right after your plotting code: ---
+    conf = compute_confusion(df_classified, df_merged, threshold=threshold, validation="min")
+    print(conf)  # {'TP': ..., 'FP': ..., 'TN': ..., 'FN': ...}
+
+    conf2 = compute_confusion_asof(df_classified,
+                             df_merged,
+                             threshold=threshold,
+                             validation="min")
+    print(conf2) 
 
 
 

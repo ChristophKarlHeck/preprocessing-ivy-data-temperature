@@ -13,6 +13,7 @@ import pandas as pd
 import glob
 import argparse
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from typing import Optional
 
 # Constants
@@ -116,44 +117,52 @@ def plot_data(df_phyto: pd.DataFrame, df_temp: pd.DataFrame, prefix: str, save_d
         prefix (str): Prefix for file naming.
         save_dir (str): Directory to save the plots.
     """
-    fig, axs = plt.subplots(4, 1, figsize=(14, 14), sharex=True)
+    fig_width = 5.90666
+    fig, axs = plt.subplots(3, 1, figsize=(fig_width, 6), sharex=True)
 
     # Phyto node CH1
-    axs[0].plot(df_phyto.index, df_phyto["CH1_milli_volt"], label="CH1 Resampled")
-    axs[0].plot(df_phyto.index, df_phyto["CH1_smoothed"], label="CH1 Smoothed", linestyle="--")
-    axs[0].set_title(f"{prefix} CH1: Resampled and Smoothed Data")
-    axs[0].set_ylabel("Voltage (mV)")  # Add y-axis label
-    axs[0].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
-    axs[0].legend()
+    #axs[0].plot(df_phyto.index, df_phyto["CH1_milli_volt"], label="CH1 Resampled", color="#FF0000")
+    axs[0].plot(df_phyto.index, df_phyto["CH1_smoothed"], label="CH0 Resampled", color="#FF0000")
+    #axs[0].set_title(f"CH0: Resampled and Smoothed")
+    axs[0].set_ylabel("Voltage [mV]")  # Add y-axis label
+    #axs[0].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
+    axs[0].legend(loc="upper left")
     axs[0].grid()
 
     # Phyto node CH2
-    axs[1].plot(df_phyto.index, df_phyto["CH2_milli_volt"], label="CH2 Resampled")
-    axs[1].plot(df_phyto.index, df_phyto["CH2_smoothed"], label="CH2 Smoothed", linestyle="--")
-    axs[1].set_title(f"{prefix} CH2: Resampled and Smoothed Data")
-    axs[1].set_ylabel("Voltage (mV)")  # Add y-axis label
-    axs[1].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
-    axs[1].legend()
+    #axs[1].plot(df_phyto.index, df_phyto["CH2_milli_volt"], label="CH2 Resampled")
+    axs[1].plot(df_phyto.index, df_phyto["CH2_smoothed"], label="CH1 Resampled", color="#8B0000")
+    #axs[1].set_title(f"CH1: Resampled and Smoothed")
+    axs[1].set_ylabel("Voltage [mV]")  # Add y-axis label
+    #axs[1].set_ylim(CONFIG["MIN_VALUE"], CONFIG["MAX_VALUE"])  # Fix y-axis range
+    axs[1].legend(loc="upper left")
     axs[1].grid()
 
     # Scaled Data
-    axs[2].plot(df_phyto.index, df_phyto["CH1_smoothed_scaled"], label="CH1 Scaled", linestyle=":")
-    axs[2].plot(df_phyto.index, df_phyto["CH2_smoothed_scaled"], label="CH2 Scaled", linestyle="--")
-    axs[2].set_title(f"{prefix} CH1, CH2: Scaled Data by factor {CONFIG['FACTOR']}")
-    axs[2].legend()
-    axs[2].grid()
+    # axs[2].plot(df_phyto.index, df_phyto["CH1_smoothed_scaled"], label="CH1 Scaled", linestyle=":")
+    # axs[2].plot(df_phyto.index, df_phyto["CH2_smoothed_scaled"], label="CH2 Scaled", linestyle="--")
+    # axs[2].set_title(f"{prefix} CH1, CH2: Scaled Data by factor {CONFIG['FACTOR']}")
+    # axs[2].legend()
+    # axs[2].grid()
 
     # Temperature
-    axs[3].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Avg Leaf Temp", alpha=0.7)
-    axs[3].plot(df_temp.index, df_temp["avg_air_temp"], label="Avg Air Temp", alpha=0.7)
-    axs[3].set_title("Temperature Data")
-    axs[3].legend()
-    axs[3].grid()
+    axs[2].plot(df_temp.index, df_temp["avg_leaf_temp"], label="Avg Leaf Temp", alpha=0.7, color="#228B22")
+    axs[2].plot(df_temp.index, df_temp["avg_air_temp"], label="Avg Air Temp", alpha=0.7, color= "#FF8C00")
+    axs[2].set_title("Temperature Data")
+    axs[2].set_ylabel("[°C]")
+    axs[2].legend(loc="upper left")
+    axs[2].grid()
+
+    time_format = mdates.DateFormatter('%H:%M')
+
+    for ax in axs:
+        ax.xaxis.set_major_formatter(time_format)
 
     plt.tight_layout()
-    plot_path = os.path.join(save_dir, f"{prefix}_plot.png")
-    plt.savefig(plot_path, dpi=300)
-    plt.show()
+    plt.savefig(f"ExampleSignal.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    #plot_path = os.path.join(save_dir, f"{prefix}_plot.png")
+    #plt.savefig(plot_path, dpi=300)
+    #plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """
@@ -222,11 +231,11 @@ def main():
 
     # Save and Plot
     preprocessed_dir = os.path.join(data_dir, "preprocessed_mm_1")
-    os.makedirs(preprocessed_dir, exist_ok=True)
-    df_phyto.to_csv(os.path.join(preprocessed_dir, f"{prefix}_preprocessed.csv"))
-    df_temp.to_csv(os.path.join(preprocessed_dir, "temperature_preprocessed.csv"))
-    save_config_to_txt(CONFIG, preprocessed_dir, prefix)
-    #plot_data(df_phyto, df_temp, prefix, preprocessed_dir)
+    #os.makedirs(preprocessed_dir, exist_ok=True)
+    #df_phyto.to_csv(os.path.join(preprocessed_dir, f"{prefix}_preprocessed.csv"))
+    #df_temp.to_csv(os.path.join(preprocessed_dir, "temperature_preprocessed.csv"))
+    #save_config_to_txt(CONFIG, preprocessed_dir, prefix)
+    plot_data(df_phyto, df_temp, prefix, preprocessed_dir)
 
 
 if __name__ == "__main__":

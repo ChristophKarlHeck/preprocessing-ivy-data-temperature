@@ -66,14 +66,14 @@ def downsample_by_mean(data, rate):
     return downsampled
 
 def extract_data(data_dir, prefix, before, after):
-    normalize_method = "zscore"
+    normalize_method = None
     secNormalize = 3600
     compressionTo100 = 36
     factor = 1000
 
     # Define file paths
     temp_annotated_path = os.path.join(data_dir, "preprocessed/temp_annotated.csv")
-    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+    preprocessed_path = os.path.join(data_dir, f"preprocessed_none_1000/{prefix}_preprocessed.csv") # HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
     plants_path = os.path.join(data_dir, "plants.csv")
     
     # Load data

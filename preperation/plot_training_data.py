@@ -53,8 +53,8 @@ def min_max_normalize(data_slice: np.ndarray, factor: float = 1.0) -> np.ndarray
     Returns:
         np.ndarray: The min-max normalized array.
     """
-    min_val = data_slice.min()
-    max_val = data_slice.max()
+    min_val = -200#data_slice.min()
+    max_val = 200#data_slice.max()
     range_val = max_val - min_val
 
     if range_val == 0:
@@ -156,8 +156,8 @@ def extract_data(data_dir, prefix, before, after, split_minutes):
 
                 #print(len(cut_ch1))
                 
-                res_ch1 = adjusted_min_max_normalize(cut_ch1, 1000)
-                res_ch2 = adjusted_min_max_normalize(cut_ch2, 1000)
+                res_ch1 = min_max_normalize(cut_ch1, 1)
+                res_ch2 = min_max_normalize(cut_ch2, 1)
 
                 result_ch1.extend(res_ch1)
                 result_ch2.extend(res_ch2)
@@ -314,8 +314,8 @@ if __name__ == "__main__":
     #plt.legend(loc="lower left", fontsize=8)
     #plt.colorbar(hb)
     plt.tight_layout()
-    plt.show()
-    #plt.savefig("heatMapAMM1000Local60.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    #plt.show()
+    plt.savefig("heatMapMM1.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
 
     
     # # Create subplots for CH1 and CH2

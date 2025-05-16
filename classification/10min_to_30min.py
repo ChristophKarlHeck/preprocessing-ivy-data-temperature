@@ -1,6 +1,7 @@
 import argparse
 import ast
 import os
+import numpy as np
 import pandas as pd
 
 def slide_window(current_window, new_row_last_value):
@@ -10,17 +11,30 @@ def slide_window(current_window, new_row_last_value):
     """
     return current_window[1:] + [new_row_last_value]
 
-def get_extended_list(df, idx, channel):
+def get_extended_list(df, idx, channel, lookahead=500):
+    current_list = list(df.loc[idx, channel])
+    additional = []
+    # grab exactly `lookahead` last‐values, or pad if you hit the end
+    for i in range(idx + 1, min(idx + 1 + lookahead, len(df))):
+        additional.append(df.loc[i, channel][-1])
+    # if we ran out of rows, you can optionally pad with the last seen value:
+    if len(additional) < lookahead:
+        additional += [additional[-1]] * (lookahead - len(additional))
+    return current_list + additional
+
+
+def downsample(lst: list, factor: int = 6) -> list[float]:
     """
-    For row at index idx, build an extended list of 300 values:
-      - Start with the current row's list (length = 100).
-      - Append the last element from each of the next 200 rows.
+    Downsample by averaging each non-overlapping block of `factor` values.
+    E.g. factor=3 turns 300 → 100, factor=4 turns 400 → 100, etc.
     """
-    current_list = df.loc[idx, channel]
-    additional_values = []
-    for i in range(idx + 1, min(idx + 201, len(df))):
-        additional_values.append(df.loc[i, channel][-1])
-    return current_list + additional_values  # 100 + 200 = 300 values
+    arr = np.asarray(lst, dtype=float)
+    n = arr.size
+    if n % factor != 0:
+        raise ValueError(f"Length {n} is not divisible by factor={factor}")
+    down = arr.reshape(-1, factor).mean(axis=1)
+    return down.tolist()
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -41,7 +55,7 @@ def main():
     # Build the initial extended windows:
     # ------------------------------
     # We need at least 200 future rows for a complete extended window.
-    if len(df) < 201:
+    if len(df) < 501:
         raise ValueError("Not enough rows in the CSV to create extended windows.")
 
     # Create the initial extended window for both channels (300 values each) from row 0.
@@ -49,25 +63,25 @@ def main():
     current_window_ch1 = get_extended_list(df, 0, 'input_not_normalized_ch1')
 
     # Initialize the ground truth window with the next 200 rows' ground_truth values (rows 1 to 200)
-    current_gt_window = [df.loc[i, "ground_truth"] for i in range(1, 201)]
+    current_gt_window = [df.loc[i, "ground_truth"] for i in range(1, 501)]
     ground_truth = 0 if all(v == 0 for v in current_gt_window) else 1
 
-    datetime = df.loc[200,"datetime"]
+    datetime = df.loc[600,"datetime"]
 
     result = []
 
     row_0 = {
         "datetime": datetime,
         "ground_truth": ground_truth,
-        "input_not_normalized_ch0": list(current_window_ch0),
-        "input_not_normalized_ch1": list(current_window_ch1),
+        "input_not_normalized_ch0": downsample(current_window_ch0),
+        "input_not_normalized_ch1": downsample(current_window_ch0),
     }
 
     result.append(row_0)
 
     # For demonstration, simulate sliding from row index 201 until the end.
     # At each sliding step, record the current window's last value (for both channels) and the aggregated GT.
-    for i in range(201, len(df)):
+    for i in range(501, len(df)):
         # Record the sliding step (using an index starting at 0)
 
         # Slide the channel windows:
@@ -91,7 +105,7 @@ def main():
     # Split input_dir into its parent and the last folder name.
     parent_dir, last_folder = os.path.split(input_dir)
     # Append "_30min" to the last folder.
-    new_folder = last_folder + "_30min"
+    new_folder = last_folder + "_60min"
     # Build the new output directory path.
     output_dir = os.path.join(parent_dir, new_folder)
 

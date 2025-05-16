@@ -256,10 +256,10 @@ def plot_data(df_classified: pd.DataFrame, df_input: pd.DataFrame, df_merged: pd
     fig.tight_layout()
 
     # Save figure in PGF format with proper bounding box
-    plt.savefig(f"OnlineHeatPhaseClassification.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
+    #plt.savefig(f"OnlineHeatPhaseClassification.pgf", format="pgf", bbox_inches="tight", pad_inches=0.05)
     #plot_path = os.path.join(save_dir, f"{prefix}_classified_plot.png")
     #plt.savefig(plot_path, dpi=300)
-    #plt.show()
+    plt.show()
 
 def save_config_to_txt(configuration: dict, directory: str, prefix: str) -> None:
     """

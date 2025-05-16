@@ -11,16 +11,17 @@ def slide_window(current_window, new_row_last_value):
     """
     return current_window[1:] + [new_row_last_value]
 
-def get_extended_list(df, idx, channel, lookahead=500):
-    current_list = list(df.loc[idx, channel])
-    additional = []
-    # grab exactly `lookahead` last‐values, or pad if you hit the end
-    for i in range(idx + 1, min(idx + 1 + lookahead, len(df))):
-        additional.append(df.loc[i, channel][-1])
-    # if we ran out of rows, you can optionally pad with the last seen value:
-    if len(additional) < lookahead:
-        additional += [additional[-1]] * (lookahead - len(additional))
-    return current_list + additional
+def get_extended_list(df, idx, channel):
+    """
+    For row at index idx, build an extended list of 300 values:
+      - Start with the current row's list (length = 100).
+      - Append the last element from each of the next 200 rows.
+    """
+    current_list = df.loc[idx, channel]
+    additional_values = []
+    for i in range(idx + 1, min(idx + 501, len(df))):
+        additional_values.append(df.loc[i, channel][-1])
+    return current_list + additional_values  # 100 + 200 = 300 values
 
 
 def downsample(lst: list, factor: int = 6) -> list[float]:
@@ -66,7 +67,7 @@ def main():
     current_gt_window = [df.loc[i, "ground_truth"] for i in range(1, 501)]
     ground_truth = 0 if all(v == 0 for v in current_gt_window) else 1
 
-    datetime = df.loc[600,"datetime"]
+    datetime = df.loc[500,"datetime"]
 
     result = []
 
